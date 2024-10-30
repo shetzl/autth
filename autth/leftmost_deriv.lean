@@ -26,7 +26,7 @@ theorem RewritesLeftmost.exists_parts {r : ContextFreeRule T N}
     use [], s
     simp
   | cons x _ ih =>
-    obtain ⟨p,q,hpq⟩ := ih
+    obtain ⟨p, q, hpq⟩ := ih
     use x::p, q
     simp [hpq]
 
@@ -36,7 +36,7 @@ theorem RewritesLeftmost.rewrites_leftmost_of_exists_parts (r : ContextFreeRule 
       (p.map terminal ++ r.output ++ q) := by
   induction p with
   | nil =>
-    convert RewritesLeftmost.head q
+    exact RewritesLeftmost.head q
   | cons x p' ih =>
     rw [List.map_cons]
     exact cons x ih
@@ -48,13 +48,11 @@ theorem RewritesLeftmost.rewrites_leftmost_iff {r : ContextFreeRule T N} {u v : 
       v = p.map terminal ++ r.output ++ q := by
   constructor
   · exact exists_parts
-  · intro h
-    obtain ⟨p,q,h⟩:=h
-    simp only [h]
+  · intro ⟨p, q, hu, hv⟩
+    rw [hu, hv]
     exact rewrites_leftmost_of_exists_parts r p q
 
-
-theorem RewritesLeftmost.rewrite_terminal (r : ContextFreeRule T N)(w : List T)
+theorem RewritesLeftmost.rewrite_terminal (r : ContextFreeRule T N) (w : List T)
     (u : List (Symbol T N)): ¬ RewritesLeftmost r (w.map terminal) u := by
   intro h
   rw [rewrites_leftmost_iff] at h
@@ -67,97 +65,79 @@ theorem RewritesLeftmost.rewrite_terminal (r : ContextFreeRule T N)(w : List T)
   obtain ⟨_,l₂,_,_,h⟩ := h
   rcases l₂ with _|⟨x, xs⟩ <;> simp at h
 
-
 theorem RewritesLeftmost.append_left {r : ContextFreeRule T N}
     {v w : List (Symbol T N)} (hr : r.RewritesLeftmost v w) (p : List T) :
     r.RewritesLeftmost (p.map terminal ++ v) (p.map terminal ++ w) := by
   induction p with
-  | nil =>
-    simp [hr]
-  | cons x p' ih =>
-    rw [List.map_cons]
-    exact cons x ih
+  | nil => simp [hr]
+  | cons x _ ih => exact ih.cons x
 
 theorem RewritesLeftmost.append_right {r : ContextFreeRule T N}
     {v w : List (Symbol T N)} (hr : r.RewritesLeftmost v w) (p : List (Symbol T N)) :
     r.RewritesLeftmost (v ++ p) (w ++ p) := by
-  obtain ⟨s,t,hpq⟩ := exists_parts hr
-  simp only [hpq]
-  have := rewrites_leftmost_of_exists_parts r s (t++p)
-  simp_all
+  obtain ⟨s, t, rfl, rfl⟩ := hr.exists_parts
+  simpa using rewrites_leftmost_of_exists_parts r s (t ++ p)
 
 theorem RewritesLeftmost.rewrites_of_rewrites_leftmost {r : ContextFreeRule T N}
     {u v : List (Symbol T N)} (hr : r.RewritesLeftmost u v) : r.Rewrites u v := by
   induction hr with
-  | head s =>
-    exact Rewrites.head _
-  | cons x _ ih =>
-    exact Rewrites.cons (terminal x) ih
+  | head s => exact Rewrites.head _
+  | cons x _ ih => exact Rewrites.cons (terminal x) ih
 
-theorem rewrites_leftmost_cons {r : ContextFreeRule T N}{x : Symbol T N}{v u : List (Symbol T N)}
+theorem rewrites_leftmost_cons {r : ContextFreeRule T N} {x : Symbol T N} {v u : List (Symbol T N)}
     (h : r.RewritesLeftmost (x :: v) u) :
     (∃ (u₁ u₂ : List (Symbol T N)), u = u₁ ++ u₂ ∧ (r.RewritesLeftmost [x] u₁ ∧ u₂ = v)) ∨
-    (∃ (w₁ : List T)(u₂ : List (Symbol T N)),
+    (∃ (w₁ : List T) (u₂ : List (Symbol T N)),
       u = (w₁.map terminal) ++ u₂ ∧ ([x] = w₁.map terminal ∧ r.RewritesLeftmost v u₂)) := by
   rcases h with ⟨_⟩|@⟨x,_,s₂,hrs⟩
   · left
-    use r.output, v
-    refine ⟨rfl,?_⟩
-    symm
-    refine  ⟨rfl,?_⟩
+    refine ⟨r.output, v, rfl, ?_, rfl⟩
     convert RewritesLeftmost.head []
     simp
   · right
-    use [x], s₂
-    refine ⟨by simp,?_⟩
-    exact ⟨by simp, hrs⟩
+    exact ⟨[x], s₂, by simp, by simp, hrs⟩
 
-theorem rewrites_leftmost_append {r : ContextFreeRule T N}{v₁ v₂ u : List (Symbol T N)}
+theorem rewrites_leftmost_append {r : ContextFreeRule T N} {v₁ v₂ u : List (Symbol T N)}
     (h : r.RewritesLeftmost (v₁ ++ v₂) u) :
     (∃ (u₁ u₂ : List (Symbol T N)), u = u₁ ++ u₂ ∧ (r.RewritesLeftmost v₁ u₁ ∧ u₂ = v₂)) ∨
     (∃ (w₁ : List T)(u₂ : List (Symbol T N)),
-      u = (w₁.map terminal) ++ u₂ ∧ (v₁ = w₁.map terminal ∧ r.RewritesLeftmost v₂ u₂)):= by
+      u = w₁.map terminal ++ u₂ ∧ (v₁ = w₁.map terminal ∧ r.RewritesLeftmost v₂ u₂)) := by
   induction v₁ generalizing u with
   | nil =>
     right
-    use [], u
-    refine ⟨by simp,by simp, ?_⟩
-    convert h
+    exact ⟨[], u, by simp, by simp, h⟩
   | cons x v₁' ih =>
     rw [List.cons_append] at h
     apply rewrites_leftmost_cons at h
     obtain ⟨u₁, u₂, h⟩|⟨w₁,u₂, h⟩ := h
     · left
-      use u₁++v₁',v₂
-      refine ⟨by simp_all,?_,rfl⟩
+      use u₁++v₁', v₂
+      refine ⟨by simp_all, ?_, rfl⟩
       rw [←List.singleton_append]
       apply RewritesLeftmost.append_right
       exact h.2.1
     · obtain ⟨u₂₁,u₂₂,hu⟩|⟨w₂₁,u₂₂,hu⟩ := ih h.2.2
       · left
         use w₁.map terminal ++ u₂₁, v₂
-        refine ⟨by simp_all,?_,rfl⟩
+        refine ⟨by simp_all, ?_, rfl⟩
         rw [←List.singleton_append,h.2.1]
         apply RewritesLeftmost.append_left
         exact hu.2.1
       · right
         use (w₁++w₂₁), u₂₂
-        refine ⟨by simp_all,?_,hu.2.2⟩
-        · rw [←List.singleton_append, h.2.1,hu.2.1]
+        refine ⟨by simp_all, ?_, hu.2.2⟩
+        · rw [←List.singleton_append, h.2.1, hu.2.1]
           simp
 
-
-
-theorem rewrites_cons {r : ContextFreeRule T N}{x : Symbol T N}{v u : List (Symbol T N)}
+theorem rewrites_cons {r : ContextFreeRule T N} {x : Symbol T N} {v u : List (Symbol T N)}
     (h : r.Rewrites (x :: v) u) :
     ∃ (u₁ u₂ : List (Symbol T N)), u = u₁ ++ u₂ ∧
-      ((r.Rewrites [x] u₁ ∧ u₂ = v) ∨ (r.Rewrites v u₂ ∧ [x]=u₁)) := by
+      ((r.Rewrites [x] u₁ ∧ u₂ = v) ∨ (r.Rewrites v u₂ ∧ [x] = u₁)) := by
   rcases h with ⟨s⟩|@⟨x,_,s₂,hrs⟩
   · use r.output, v
-    refine ⟨rfl,?_⟩
+    refine ⟨rfl, ?_⟩
     left
-    symm
-    use rfl
+    refine ⟨?_, rfl⟩
     rw [rewrites_iff]
     use [], []
     simp
@@ -165,47 +145,35 @@ theorem rewrites_cons {r : ContextFreeRule T N}{x : Symbol T N}{v u : List (Symb
     constructor
     · simp
     · right
-      symm
-      use rfl
+      exact ⟨hrs, rfl⟩
 
 theorem rewrites_append {r : ContextFreeRule T N}{v₁ v₂ u : List (Symbol T N)}
     (h : r.Rewrites (v₁ ++ v₂) u) :
     ∃ (u₁ u₂ : List (Symbol T N)), u = u₁ ++ u₂ ∧
-      ((r.Rewrites v₁ u₁ ∧ v₂ = u₂) ∨ (r.Rewrites v₂ u₂ ∧ v₁=u₁ )) := by
+      ((r.Rewrites v₁ u₁ ∧ v₂ = u₂) ∨ (r.Rewrites v₂ u₂ ∧ v₁ = u₁)) := by
   induction v₁ generalizing u with
-  | nil =>
-    use [], u
-    use rfl
-    right
-    use h
+  | nil => exact ⟨[], u, rfl, Or.inr ⟨h, rfl⟩⟩
   | cons x v₁ ih =>
     rw [List.cons_append] at h
     apply rewrites_cons at h
     obtain ⟨u₁,u₂,hu⟩ := h
     rcases hu.2 with hu'|hu'
-    · use u₁++v₁, v₂
-      refine ⟨?_,?_⟩
-      · simp [hu.1,hu'.2]
+    · refine ⟨u₁++v₁, v₂, ?_, ?_⟩
+      · simp [hu.1, hu'.2]
       · left
-        symm
-        use rfl
-        convert Rewrites.append_right hu'.1 v₁
+        exact ⟨hu'.1.append_right v₁, rfl⟩
     · obtain ⟨s₁,s₂,hs,hs'⟩ := ih hu'.1
       rcases hs' with hs'|hs'
-      · use x::s₁, s₂
-        refine ⟨?_,?_⟩
+      · refine ⟨x::s₁, s₂, ?_, ?_⟩
         · rw [List.cons_append,←hs, ←List.singleton_append,hu'.2]
           exact hu.1
         · left
-          refine ⟨?_,hs'.2⟩
-          convert Rewrites.append_left  hs'.1 [x]
-      · use x::s₁, s₂
-        refine ⟨?_,?_⟩
+          exact ⟨hs'.1.append_left [x], hs'.2⟩
+      · refine ⟨x::s₁, s₂, ?_, ?_⟩
         · rw [List.cons_append,←hs, ←List.singleton_append,hu'.2]
           exact hu.1
         · right
-          refine ⟨hs'.1,?_⟩
-          rw [hs'.2]
+          exact ⟨hs'.1, congr_arg _ hs'.2⟩
 
 end ContextFreeRule
 
@@ -298,86 +266,60 @@ theorem derives_of_derives_leftmost {u v : List (Symbol T g.NT)}(h:g.DerivesLeft
     g.Derives u v := by
   induction h using Relation.ReflTransGen.head_induction_on with
   | refl => rfl
-  | head h₁ _ ih =>
-    apply produces_of_produces_leftmost at h₁
-    apply Produces.trans_derives h₁ ih
+  | head h₁ _ ih => exact Produces.trans_derives (produces_of_produces_leftmost h₁) ih
 
-theorem derives_leftmost_cons  {x : Symbol T g.NT}{v u : List (Symbol T g.NT)}
+theorem derives_leftmost_cons {x : Symbol T g.NT} {v u : List (Symbol T g.NT)}
     (h : g.DerivesLeftmost (x :: v) u) :
-    (∃ (u' : List (Symbol T g.NT)), u =u' ++ v ∧ g.DerivesLeftmost [x] u')  ∨
-    (∃ (w₁ : List T)(u₂ : List (Symbol T g.NT)), u = w₁.map terminal ++ u₂ ∧
+    (∃ (u' : List (Symbol T g.NT)), u = u' ++ v ∧ g.DerivesLeftmost [x] u') ∨
+    (∃ (w₁ : List T) (u₂ : List (Symbol T g.NT)), u = w₁.map terminal ++ u₂ ∧
       g.DerivesLeftmost [x] (w₁.map terminal) ∧ g.DerivesLeftmost v u₂) := by
   induction h with
   | refl =>
     left
     use [x]
     exact ⟨by simp, by rfl⟩
-  | tail hb last ih =>
+  | tail _ last ih =>
     obtain ⟨u₁,hu⟩|⟨w₁,u₂,hu⟩ := ih
     · rw [hu.1] at last
       obtain ⟨r,hr,last⟩ := last
-      apply ContextFreeRule.rewrites_leftmost_append at last
-      obtain ⟨o₁,o₂,ho⟩|⟨w₁,o₂,ho⟩ := last
+      obtain ⟨o₁,o₂,ho⟩|⟨w₁,o₂,ho⟩ := ContextFreeRule.rewrites_leftmost_append last
       · left
-        use o₁
-        refine ⟨by simp_all,?_⟩
-        have : g.ProducesLeftmost u₁ o₁ := ⟨r,hr,ho.2.1⟩
-        exact DerivesLeftmost.trans_produces hu.2 this
+        exact ⟨o₁, by simp_all, hu.2.trans_produces ⟨r,hr,ho.2.1⟩⟩
       · right
-        use w₁, o₂
-        refine ⟨by simp_all,by simp_all,?_⟩
-        · have : g.ProducesLeftmost v o₂ := ⟨r,hr,ho.2.2⟩
-          exact ProducesLeftmost.single this
+        exact ⟨w₁, o₂, by simp_all, by simp_all, ProducesLeftmost.single ⟨r,hr,ho.2.2⟩⟩
     · rw [hu.1] at last
       right
       use w₁
       obtain ⟨r,hr,last⟩ := last
-      apply ContextFreeRule.rewrites_leftmost_append at last
-      obtain ⟨o₁,o₂,ho⟩|⟨w₁',o₂,ho⟩ := last
+      obtain ⟨o₁,o₂,ho⟩|⟨w₁',o₂,ho⟩ := ContextFreeRule.rewrites_leftmost_append last
       · exfalso
         exact ContextFreeRule.RewritesLeftmost.rewrite_terminal _ _ _ ho.2.1
-      · use o₂
-        refine ⟨by simp_all,hu.2.1,?_⟩
-        have : g.ProducesLeftmost u₂ o₂ := ⟨r,hr,ho.2.2⟩
-        exact DerivesLeftmost.trans_produces hu.2.2 this
+      · exact ⟨o₂, by simp_all, hu.2.1, hu.2.2.trans_produces ⟨r,hr,ho.2.2⟩⟩
 
 theorem derives_leftmost_append {v₁ v₂ u : List (Symbol T g.NT)}
     (h : g.DerivesLeftmost (v₁ ++ v₂) u) :
-    (∃ (u' : List (Symbol T g.NT)), u =u' ++ v₂ ∧ g.DerivesLeftmost v₁ u')  ∨
-    (∃ (w₁ : List T)(u₂ : List (Symbol T g.NT)), u = w₁.map terminal ++ u₂ ∧
+    (∃ (u' : List (Symbol T g.NT)), u = u' ++ v₂ ∧ g.DerivesLeftmost v₁ u') ∨
+    (∃ (w₁ : List T) (u₂ : List (Symbol T g.NT)), u = w₁.map terminal ++ u₂ ∧
       g.DerivesLeftmost v₁ (w₁.map terminal) ∧ g.DerivesLeftmost v₂ u₂) := by
   induction v₁ generalizing u with
   | nil =>
     right
-    use [], u
-    exact ⟨by simp_all,by simp [DerivesLeftmost.refl],by simp_all⟩
+    exact ⟨[], u, by simp_all, by rfl, by simp_all⟩
   | cons x v₁' ih =>
     apply derives_leftmost_cons at h
     obtain ⟨u₁,hu⟩|⟨w₁,u₂,hu⟩ := h
     · left
-      use u₁++v₁'
-      refine ⟨by simp [hu],?_⟩
-      rw [←List.singleton_append]
-      apply DerivesLeftmost.append_right
-      exact hu.2
+      exact ⟨u₁++v₁', by simp [hu], hu.2.append_right _⟩
     · obtain ⟨u₂₁,hu₂⟩|⟨w₂₁,u₂₂,hu₂⟩ := ih hu.2.2
       · left
-        use w₁.map terminal ++ u₂₁
-        refine ⟨by simp_all,?_⟩
-        rw [←List.singleton_append]
-        have d₁ := DerivesLeftmost.append_right hu.2.1 v₁'
-        have d₂ := DerivesLeftmost.append_left hu₂.2 w₁
-        exact DerivesLeftmost.trans d₁ d₂
+        exact ⟨w₁.map terminal ++ u₂₁, by simp_all,
+          (hu.2.1.append_right v₁').trans (hu₂.2.append_left w₁)⟩
       · right
         use w₁++w₂₁, u₂₂
-        refine ⟨by simp_all,?_,hu₂.2.2⟩
-        rw [←List.singleton_append]
-        have d₁ := DerivesLeftmost.append_right hu.2.1 v₁'
-        have d₂ := DerivesLeftmost.append_left hu₂.2.1 w₁
-        convert DerivesLeftmost.trans d₁ d₂
-        simp
+        rw [List.map_append]
+        exact ⟨by simp_all, (hu.2.1.append_right v₁').trans (hu₂.2.1.append_left w₁), hu₂.2.2⟩
 
-theorem derives_cons  {x : Symbol T g.NT}{v u : List (Symbol T g.NT)} (h : g.Derives (x :: v) u) :
+theorem derives_cons {x : Symbol T g.NT} {v u : List (Symbol T g.NT)} (h : g.Derives (x :: v) u) :
     ∃ (u₁ u₂ : List (Symbol T g.NT)), u = u₁ ++ u₂ ∧ g.Derives [x] u₁ ∧ g.Derives v u₂ := by
   induction h with
   | refl =>
@@ -387,41 +329,30 @@ theorem derives_cons  {x : Symbol T g.NT}{v u : List (Symbol T g.NT)} (h : g.Der
     obtain ⟨u₁,u₂,hu₁,hu₂⟩ := ih
     rw [hu₁] at h₁ h₂
     obtain ⟨r,hr,huc⟩ := h₂
-    apply ContextFreeRule.rewrites_append at huc
-    obtain ⟨v₁,v₂,huv⟩ := huc
+    obtain ⟨v₁,v₂,huv⟩ := ContextFreeRule.rewrites_append huc
     use v₁, v₂
     use huv.1
     rcases huv.2 with huv|huv
-    · have : g.Produces u₁ v₁ := by
-        use r
-        exact ⟨hr,huv.1⟩
-      use Derives.trans_produces hu₂.1 this
+    · use hu₂.1.trans_produces ⟨r, hr, huv.1⟩
       convert hu₂.2
       exact huv.2.symm
-    · have : g.Produces u₂ v₂ := by
-        use r
-        exact ⟨hr,huv.1⟩
-      rw [huv.2.symm]
-      refine ⟨hu₂.1,?_⟩
-      use Derives.trans_produces hu₂.2 this
+    · rw [huv.2.symm]
+      exact ⟨hu₂.1, hu₂.2.trans_produces ⟨r, hr, huv.1⟩⟩
 
-
-theorem derives_leftmost_iff {w : List T}{α : List (Symbol T g.NT)}:
-    g.DerivesLeftmost α (w.map terminal)  ↔ g.Derives α (w.map terminal) := by
+theorem derives_leftmost_iff {w : List T} {α : List (Symbol T g.NT)} :
+    g.DerivesLeftmost α (w.map terminal) ↔ g.Derives α (w.map terminal) := by
   constructor
   · exact derives_of_derives_leftmost
   · intro h
     induction h using Relation.ReflTransGen.head_induction_on with
     | refl => rfl
-    | head first hc ih =>
+    | head first _ ih =>
       obtain ⟨r,hr,first⟩ := first
       rw [ContextFreeRule.rewrites_iff] at first
       obtain ⟨v₁,v₂,hv⟩ := first
-      rw [hv.2,List.append_assoc] at ih
-      apply derives_leftmost_append at ih
-      obtain ⟨u₁,hu⟩|⟨w₁,u₂,hu⟩ := ih
-      · have hu' :=  (List.map_eq_append _).mp hu.1
-        obtain ⟨w₁₁,w₂₂, hw⟩ := hu'
+      rw [hv.2, List.append_assoc] at ih
+      obtain ⟨u₁,hu⟩|⟨w₁,u₂,hu⟩ := derives_leftmost_append ih
+      · obtain ⟨w₁₁, w₂₂, hw⟩ := (List.map_eq_append _).mp hu.1
         have d₁ : g.DerivesLeftmost ([nonterminal r.input] ++ v₂) (r.output ++ v₂) := by
           apply ProducesLeftmost.single
           use r, hr
@@ -430,7 +361,7 @@ theorem derives_leftmost_iff {w : List T}{α : List (Symbol T g.NT)}:
           simp
         have d₂ := DerivesLeftmost.append_left d₁ w₁₁
         rw [hw.2.1] at d₂
-        have d₃ :=  DerivesLeftmost.append_right hu.2  ([nonterminal r.input] ++ v₂)
+        have d₃ :=  DerivesLeftmost.append_right hu.2 ([nonterminal r.input] ++ v₂)
         convert DerivesLeftmost.trans d₃ d₂ <;> simp_all
       · have d₁ : g.DerivesLeftmost ([nonterminal r.input] ++ v₂) (r.output ++ v₂) := by
           apply ProducesLeftmost.single
@@ -438,9 +369,8 @@ theorem derives_leftmost_iff {w : List T}{α : List (Symbol T g.NT)}:
           rw [ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff]
           use [], v₂
           simp
-        have d' := DerivesLeftmost.trans d₁ hu.2.2
-        have d₂ := DerivesLeftmost.append_left d' w₁
-        have d₃ := DerivesLeftmost.append_right hu.2.1 ([nonterminal r.input] ++ v₂)
+        have d₂ := (d₁.trans hu.2.2).append_left w₁
+        have d₃ := hu.2.1.append_right ([nonterminal r.input] ++ v₂)
         convert DerivesLeftmost.trans d₃ d₂ <;> simp_all
-        
+
 end ContextFreeGrammar
