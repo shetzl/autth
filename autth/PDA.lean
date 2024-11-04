@@ -52,15 +52,6 @@ def step (r₁ : conf pda) : Set (conf pda) :=
                                           r₂ = ⟨p, [], (β ++ α)⟩ }
     | ⟨q, w, []⟩ => { r₂ : conf pda | r₂ = ⟨q, w, []⟩ } -- Empty stack
 
-def stepSet (R : Set (conf pda)) : Set (conf pda) :=
-  ⋃ r ∈ R, step r
-
-def stepSetN (n : ℕ) (R : Set (conf pda))  : Set (conf pda) :=
-  match n with
-  | 0 => R
-  | Nat.succ m => stepSet (stepSetN m R)
-
-
 def Reaches₁ (r₁ r₂ : conf pda) : Prop := r₂ ∈ step r₁
 def Reaches : conf pda → conf pda → Prop := Relation.ReflTransGen Reaches₁
 
