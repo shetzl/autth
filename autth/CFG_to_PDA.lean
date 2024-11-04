@@ -54,16 +54,16 @@ abbrev M (G : ContextFreeGrammar T) [Fintype G.NT] : PDA' G:= {
 section
 variable {G : ContextFreeGrammar T} [Fintype G.NT]
 theorem M_consumes_terminal (a : T) (w : List T) (α : List (S G)):
-    (M G).reachesN 1 ⟨Q.loop, a::w, terminal a :: α⟩ ⟨Q.loop, w, α⟩ := by
-  rw [reachesN_one,step]
+    (M G).ReachesIn 1 ⟨Q.loop, a::w, terminal a :: α⟩ ⟨Q.loop, w, α⟩ := by
+  rw [reachesIn_one,step]
   apply Set.mem_union_left
   rw [Set.mem_setOf]
   use Q.loop, []
   simp [M, CFG_to_PDA.transition_fun]
 
 theorem M_consumes_nonterminal {r : ContextFreeRule T G.NT} (h : r ∈ G.rules) (w : List T) (α : List (S G)):
-    (M G).reachesN 1 ⟨Q.loop, w, nonterminal r.input :: α⟩ ⟨Q.loop, w, r.output ++ α⟩ := by
-  rw [reachesN_one]
+    (M G).ReachesIn 1 ⟨Q.loop, w, nonterminal r.input :: α⟩ ⟨Q.loop, w, r.output ++ α⟩ := by
+  rw [reachesIn_one]
   rcases w with _| ⟨a, w'⟩ <;> dsimp [step]
   · use Q.loop, r.output
     dsimp [transition_fun']
@@ -79,10 +79,10 @@ theorem M_consumes_nonterminal {r : ContextFreeRule T G.NT} (h : r ∈ G.rules) 
     · rfl
 
 theorem G_rule_of_M_consumes_nonterminal {w w': List T}{α β: List (S G)}{N : G.NT}  :
-    (M G).reachesN 1 ⟨Q.loop, w, nonterminal N :: α⟩ ⟨Q.loop, w', β⟩ →
+    (M G).ReachesIn 1 ⟨Q.loop, w, nonterminal N :: α⟩ ⟨Q.loop, w', β⟩ →
     ∃(γ : List (S G)), (⟨N,γ⟩ ∈ G.rules) ∧ β = γ ++ α ∧ w=w':= by
   intro h
-  rw [reachesN_one] at h
+  rw [reachesIn_one] at h
   rcases w with _ | ⟨a, w'⟩ <;> simp only [step, transition_fun',transition_fun, Set.mem_setOf] at h
   · obtain ⟨_,γ,hγ, h⟩ := h
     apply conf.mk.inj at h
@@ -106,18 +106,18 @@ theorem G_rule_of_M_consumes_nonterminal {w w': List T}{α β: List (S G)}{N : G
       · simp [h]
 
 theorem M_consumes_terminal_string  (w w': List T) (α : List (S G)):
-    (M G).reaches ⟨Q.loop, w++w', w.map terminal ++ α⟩ ⟨Q.loop, w', α⟩ := by
+    (M G).Reaches ⟨Q.loop, w++w', w.map terminal ++ α⟩ ⟨Q.loop, w', α⟩ := by
   induction' w with a w ih
   · rfl
-  · apply reaches_trans _ ih
-    rw [reaches_iff_reachesN]
+  · apply Reaches.trans _ ih
+    rw [reaches_iff_reachesIn]
     use 1
     apply M_consumes_terminal
 
 theorem M_terminal_stack_of_read (a : T) (w : List T) (α β : List (S G)):
-    (M G).reachesN 1 ⟨Q.loop, a::w, α⟩ ⟨Q.loop, w, β ⟩ → α = terminal a::β  := by
+    (M G).ReachesIn 1 ⟨Q.loop, a::w, α⟩ ⟨Q.loop, w, β ⟩ → α = terminal a::β  := by
   intro h
-  rcases α with _|⟨Z,α'⟩ <;> rw [reachesN_one] at h <;> dsimp [step] at h
+  rcases α with _|⟨Z,α'⟩ <;> rw [reachesIn_one] at h <;> dsimp [step] at h
   · rw [Set.mem_singleton_iff] at h
     have : w = a::w := by apply conf.mk.inj at h; exact h.2.1
     apply List.ne_cons_self at this
@@ -141,9 +141,9 @@ theorem M_terminal_stack_of_read (a : T) (w : List T) (α β : List (S G)):
       exact List.cons_ne_self _ _ hr.2.1.symm
 
 theorem M_deterministic_step_of_terminal_stack_cons (a : T) (w v : List T) (β β' : List (S G)) :
-    (M G).reachesN 1 ⟨Q.loop, w, terminal a :: β⟩ ⟨Q.loop, v, β'⟩ → w = a::v ∧ β = β' := by
+    (M G).ReachesIn 1 ⟨Q.loop, w, terminal a :: β⟩ ⟨Q.loop, v, β'⟩ → w = a::v ∧ β = β' := by
   intro h
-  rw [reachesN_one] at h
+  rw [reachesIn_one] at h
   rcases w with _|⟨b, w'⟩ <;>  dsimp [step, transition_fun'] at h
   · obtain ⟨_,β',h⟩ := h
     exfalso
@@ -161,27 +161,28 @@ theorem M_deterministic_step_of_terminal_stack_cons (a : T) (w v : List T) (β �
       exact (Set.not_mem_empty _) hγ
 
 theorem M_deterministic_of_terminal_stack_cons (a: T) (w : List T) (β : List (S G)):
-    (M G).reaches ⟨Q.loop, w, terminal a :: β⟩ ⟨Q.loop, [], []⟩ →
-    ∃ w' : List T, w = a :: w' ∧ (M G).reaches ⟨Q.loop, w', β⟩ ⟨Q.loop, [], []⟩ := by
+    (M G).Reaches ⟨Q.loop, w, terminal a :: β⟩ ⟨Q.loop, [], []⟩ →
+    ∃ w' : List T, w = a :: w' ∧ (M G).Reaches ⟨Q.loop, w', β⟩ ⟨Q.loop, [], []⟩ := by
   intro h
-  rw [reaches_iff_reachesN] at h
+  rw [reaches_iff_reachesIn] at h
   obtain ⟨n,h⟩ := h
   rcases n with _|⟨n⟩
-  · rw [reachesN_zero,conf.mk.injEq] at h
+  · apply reachesIn_zero at h
+    rw [conf.mk.injEq] at h
     exfalso
     exact List.cons_ne_nil _ _ h.2.2
-  · rw [←reachesN_iff_split_first] at h
+  · rw [←reachesIn_iff_split_first] at h
     obtain ⟨⟨_,v,β'⟩,h₁,h₂⟩ := h
     apply M_deterministic_step_of_terminal_stack_cons at h₁
     use v
     use h₁.1
     rw [←h₁.2] at h₂
-    rw [reaches_iff_reachesN]
+    rw [reaches_iff_reachesIn]
     use n
 
 theorem M_deterministic_of_terminal_stack (w v: List T) (β  : List (S G)):
-    (M G).reaches ⟨Q.loop, w, v.map terminal ++ β⟩ ⟨Q.loop, [], []⟩ →
-    ∃ w' : List T,  w = v ++ w' ∧ (M G).reaches ⟨Q.loop, w', β⟩ ⟨Q.loop, [], []⟩ := by
+    (M G).Reaches ⟨Q.loop, w, v.map terminal ++ β⟩ ⟨Q.loop, [], []⟩ →
+    ∃ w' : List T,  w = v ++ w' ∧ (M G).Reaches ⟨Q.loop, w', β⟩ ⟨Q.loop, [], []⟩ := by
   intro h
   induction' v with a v' ih generalizing w
   · use w
@@ -199,21 +200,19 @@ theorem M_deterministic_of_terminal_stack (w v: List T) (β  : List (S G)):
 
 theorem M_reaches_off_G_derives (α : List (Symbol T G.NT)) (w : List T)
     (h : G.DerivesLeftmost α (w.map terminal)):
-    (M G).reaches ⟨Q.loop, w, α⟩ ⟨Q.loop, [], []⟩ := by
+    (M G).Reaches ⟨Q.loop, w, α⟩ ⟨Q.loop, [], []⟩ := by
   induction' h using Relation.ReflTransGen.head_induction_on with α β hα _ ih
   case refl =>
     induction' w with a w' ih
     case nil =>
-      dsimp [reaches]
-      use 0
-      simp [stepSetN]
+      rfl
     case cons =>
       rw [List.map_cons]
-      rw [reaches_iff_reachesN] at ih
+      rw [reaches_iff_reachesIn] at ih
       obtain ⟨n, hw'⟩ := ih
-      rw [reaches_iff_reachesN]
+      rw [reaches_iff_reachesIn]
       use n+1
-      rw [←reachesN_iff_split_first]
+      rw [←reachesIn_iff_split_first]
       use ⟨Q.loop, w', w'.map terminal⟩
       refine ⟨?_,?_⟩
       · apply M_consumes_terminal
@@ -226,31 +225,31 @@ theorem M_reaches_off_G_derives (α : List (Symbol T G.NT)) (w : List T)
     rw [List.append_assoc] at ih
     apply M_deterministic_of_terminal_stack at ih
     obtain ⟨w', hw', hr ⟩ := ih
-    have hpart₁ : (M G).reaches ⟨Q.loop, w,α⟩ ⟨Q.loop, w', nonterminal r.input :: q ⟩ := by
+    have hpart₁ : (M G).Reaches ⟨Q.loop, w,α⟩ ⟨Q.loop, w', nonterminal r.input :: q ⟩ := by
       rw [hα', List.append_assoc, hw']
       apply M_consumes_terminal_string p  _
-    have hpart₂ : (M G).reaches ⟨Q.loop, w', nonterminal r.input :: q⟩ ⟨Q.loop, w', r.output ++ q⟩ := by
-      rw [reaches_iff_reachesN]
+    have hpart₂ : (M G).Reaches ⟨Q.loop, w', nonterminal r.input :: q⟩ ⟨Q.loop, w', r.output ++ q⟩ := by
+      rw [reaches_iff_reachesIn]
       use 1
       exact M_consumes_nonterminal hrg _ q
-    have := reaches_trans hpart₁ hpart₂
-    exact reaches_trans this hr
+    have := Reaches.trans hpart₁ hpart₂
+    exact Reaches.trans this hr
 
 
 theorem G_derives_of_M_reaches {α : List (Symbol T G.NT)} {w : List T}
-    (h: (M G).reaches ⟨Q.loop,w,α⟩ ⟨Q.loop,[], []⟩):
+    (h: (M G).Reaches ⟨Q.loop,w,α⟩ ⟨Q.loop,[], []⟩):
     G.Derives α (w.map terminal) := by
-  rw [reaches_iff_reachesN] at h
+  rw [reaches_iff_reachesIn] at h
   obtain ⟨n,hr⟩ := h
   induction' n  with n ih generalizing w α
-  · rw [reachesN_zero] at hr
+  · apply reachesIn_zero at hr
     apply conf.mk.inj at hr
     rw [hr.2.1, hr.2.2, List.map_nil]
-  · rw [←reachesN_iff_split_first] at hr
+  · rw [←reachesIn_iff_split_first] at hr
     obtain ⟨⟨_,w',β⟩, h₁, h₂⟩ :=  hr
     apply ih at h₂
     rcases α with _|⟨⟨a⟩|⟨N⟩,α'⟩
-    · apply reaches_of_reachesN at h₁
+    · apply reaches_of_reachesIn at h₁
       apply reaches_on_empty_stack at h₁
       rw [←h₁.1,h₁.2] at h₂
       exact h₂
