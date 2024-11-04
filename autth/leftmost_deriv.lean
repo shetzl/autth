@@ -1,5 +1,26 @@
+/-
+Copyright (c) 2024 Tobias Leichtfried. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Tobias Leichtfried
+-/
 import Mathlib.Computability.ContextFreeGrammar
 import Mathlib.Tactic
+
+/-!
+# Leftmost Deriviations in Context-Free Gammars
+
+This file contains the definition of a leftmost deriviation. These are deriviations
+where in each rewriting step the leftmost nonterminal is replaced
+
+## Main Definitions
+* `ContextFreeRule.RewritesLeftmost`: Leftmost counterpart to `ContextFreeRule.Rewrites`
+* `ContextFreeGrammar.ProducesLeftmost`: Leftmost counterpart to `ContextFreeRule.Produces`
+* `ContextFreeGrammar.DerivesLeftmost`: Leftmost counterpart to `ContextFreeRule.Derives`
+
+## Main Result
+* `ContextFreeGrammar.derives_leftmost_iff` : A string of terminals can be derived from a string of
+  symbols iff it can be leftmost derived.
+-/
 
 universe uT uN
 variable {T : Type uT}
