@@ -246,5 +246,79 @@ Everything here is very similiar to Hopcroft and Ullman.
   Let $M$ be a PDA with $L=N(M)$ then there exists a CFG $G$ so that $L(G)=L.$
 \end{theorem}
 \begin{proof}
-  As in Hopcroft, Ullman
+Let $M= (Q,\Sigma,\Gamma,\delta,q_0,Z_0,F) $ be a PDA, we define a grammar $G=(N,\Sigma,P,S)$
+as follows: Let
+$n_0 = \max \{|\alpha| \mid \exists q,p\in Q,\, a\in\Sigma,\, Z\in\Gamma: (p,\alpha) \in \delta(q,a,Z) \}+1$
+we define the nonterminals
+\[
+  N = \{ [p, Z, q] \mid p,q\in Q, Z \in \Gamma \} \cup
+   \{ \langle p, \alpha, q\rangle \mid p,q\in Q, \alpha \in \Gamma^*, |\alpha|  \le n_0 \} \cup \{S\}
+\]
+(note: $[p,Z,q]\neq \langle p,Z,q\rangle$) and following productions
+\begin{align}
+  \langle q,\varepsilon, q\rangle \to \varepsilon  \quad &\text{for every } q\in Q \\
+  [q, Z, p] \to a\langle q_1,\gamma,p\rangle  \quad &\text{if } (q_1,\gamma) \in \delta(q,a,Z) \\
+  \langle q, Z\alpha, p\rangle \to [q,Z,q_1]\langle q_1,\alpha,p\rangle \quad &\text{for every } q_1\in Q\\
+  S \to [q_0,Z_0,p] \quad &\text{for every } p \in Q.
+\end{align}
+We will now proof $L(G)=N(M)$ by first showing
+\[
+  \forall \langle q,\gamma, p\rangle\in N :
+  \langle q,\gamma, p\rangle \Rightarrow_G x \Leftrightarrow (q,x,\gamma) \vdash_M (p,\varepsilon,\varepsilon)
+\]
+We begin with the reverse implication, so assume $(q,x,\gamma) \vdash_M (p,\varepsilon,\varepsilon)$
+we proof $\langle q,\gamma, p\rangle \Rightarrow_G x$ by induction on the number of computation steps.
+For the base case we have $(q,x,\gamma) \vdash_M^0 (p,\varepsilon,\varepsilon)$
+so $\gamma = \varepsilon$, $x=\varepsilon$ and $q=p$, we know $\langle q,\varepsilon, q\rangle\to\varepsilon$
+by (3.1). For the induction step we assume $(q,x,\gamma) \vdash_M^n (p,\varepsilon,\varepsilon)$
+and assume the statement holds for natural numbers less than $n$. We further assume $\gamma =
+Z\gamma'$  as otherwise no computation would be possible and write $x=ay$, noting that $a=\varepsilon$
+is possible.
+
+We split at the first step of the computation:
+\[
+  (q,ay,Z\gamma') \vdash_M^1 (q_1,y,\alpha\gamma') \vdash_M^{n-1} (p,\varepsilon,\varepsilon)
+\]
+
+where $(q_1,\alpha) \in \delta(q,a,Z)$. From $(q_1,y,\alpha\gamma')
+\vdash_M^{n-1} (p,\varepsilon,\varepsilon)$ we obtain the existence of
+$\tilde q\in Q,\,y_1,y_2\in\Sigma^*,\, m_1,m_2<n$ so that $y=y_1y_2$,\,
+$(q_1,y_1,\alpha) \vdash_M^{m_1} (\tilde q,\varepsilon,\varepsilon)$ and
+$(\tilde q,y_2,\gamma') \vdash_M^{m_2} (p,\varepsilon,\varepsilon)$.
+By applying the induction hypothesis twice we obtain
+$\langle q_1,\alpha,\tilde q\rangle\Rightarrow_G y_1$ and $\langle\tilde q,\gamma',p\rangle\Rightarrow_G y_2$ .
+By rules (3.3) and (3.4) we have
+$\langle q,\gamma,p\rangle=\langle q,Z\gamma',p\rangle\Rightarrow_G [q,Z, \tilde q]\langle \tilde q,\gamma',p\rangle\Rightarrow_G
+a\langle q_1,\alpha, \tilde q\rangle\langle\tilde q,\gamma',p\rangle
+\Rightarrow_G a\langle q,\alpha, \tilde q\rangle\langle\tilde q,\gamma',p\rangle$.
+Taking all this together
+gives us $\langle q,\gamma,p \rangle\Rightarrow_G ay_1y_2=x$
+
+For the other direction we use induction on the number of derivation steps, for
+the base case we have $\langle p,\gamma,q\rangle \Rightarrow_G^0 x$ as assumption, this however
+cannot be the case, so the base case is concluded.
+
+For the induction step we assume $\langle p,\gamma,q\rangle \Rightarrow_G^n x$ and assume
+further that the implication holds for natural numbers less than $n$. We note
+differentiate if $\gamma=\varepsilon$ or $\gamma=Z\gamma'$. In the first case
+we immediately see $q=p$ and $x=\varepsilon$ and conclude
+$(q,\varepsilon,\varepsilon)\vdash_M(q,\varepsilon,\varepsilon)$. We now consider the
+case $\gamma = Z\gamma'$. As we are working with leftmost derivations we
+know the first two steps of the derivation:
+\[
+\langle p,\gamma,q \rangle=\langle p,Z\gamma',q \rangle  \Rightarrow_G^{1}
+[p,Z,\tilde q]\langle \tilde q,\gamma',q \rangle  \Rightarrow_G^{1}
+\langle p,\alpha, \tilde q \rangle\langle \tilde q,\gamma',q \rangle
+ \Rightarrow_G^{n-2} x
+\]
+We can now split $x=x_1x_2$ so that
+\[
+  \langle p,\alpha, \tilde q \rangle \Rightarrow_G x_1 \qquad \langle \tilde q,\gamma',
+  p \rangle \Rightarrow_G x_2
+\]
+in fewer than $n$ steps. By applying the induction hypothesis we have
+$(p, x_1,\alpha)\vdash_M (\tilde q, \varepsilon,\varepsilon)$ and
+$(\tilde q, x_2,\gamma')\vdash_M (p, \varepsilon,\varepsilon)$.
+By putting this two computation together we obtain
+$(q, x,\gamma)=(q, x_1x_2,\alpha\gamma')\vdash_M (p, \varepsilon,\varepsilon)$.
 \end{proof}
