@@ -12,6 +12,8 @@ structure PDA (Q T S : Type) [Fintype Q] [Fintype T] [Fintype S] where
   final_states : Set Q
   transition_fun : Q → T → S → Set (Q × List S)
   transition_fun' : Q → S → Set (Q × List S)
+  finite (q : Q)(a : T)(Z : S): (transition_fun q a Z).Finite
+  finite' (q : Q)(Z : S): (transition_fun' q Z).Finite
 
 namespace PDA
 

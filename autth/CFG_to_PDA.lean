@@ -49,6 +49,28 @@ abbrev M (G : ContextFreeGrammar T) [Fintype G.NT] : PDA' G:= {
   final_states := ∅
   transition_fun := transition_fun G
   transition_fun' := transition_fun' G
+  finite := by
+    rintro q a (⟨x⟩|⟨N⟩) <;> dsimp [transition_fun]
+    · by_cases a=x
+      <;> simp_all
+    · exact Set.finite_empty
+  finite' := by
+    rintro q (⟨x⟩|⟨N⟩)
+    · exact Set.finite_empty
+    · let R  := {r | r ∈ G.rules}
+      have hR : R.Finite := by dsimp [R]; simp
+      let S  := (λ ⟨N, α⟩ ↦ (Q.loop, α)) ''  R
+      have hS : S.Finite := by dsimp [S]; apply Set.Finite.image; exact hR
+      let A := (transition_fun' G q (nonterminal N))
+      have : A ⊆ S := by
+        intro x hx
+        dsimp [S,R]
+        rw [Set.mem_image]
+        dsimp [A,transition_fun'] at hx
+        obtain ⟨α, hα₁,hα₂⟩ := hx
+        use ⟨N,α⟩
+        simp_all
+      exact Set.Finite.subset hS this
 }
 
 section

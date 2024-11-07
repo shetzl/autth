@@ -21,14 +21,10 @@ variable {Q T S : Type} [Fintype Q] [Fintype T] [Fintype S]
     [DecidableEq Q][DecidableEq T][DecidableEq S]
 
 variable {M : PDA Q T S}
+variable (h_M_not_trivial : ((⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
+  (⋃(q : Q)(Z : S), M.transition_fun' q Z)).Nonempty)
 --abbrev max_push (M : PDA Q T S)
 open Symbol
-
-inductive N (M: PDA Q T S)  where
-  | start : N M
-  | single : Q → S → Q → N M
-  | list : Q → List S → Q → N M
-deriving DecidableEq
 
 instance : DecidableEq (ContextFreeRule T (N M)) := by
   intro ⟨n₁, α₁⟩ ⟨n₂, α₂⟩
@@ -41,15 +37,74 @@ instance : DecidableEq (ContextFreeRule T (N M)) := by
   exact instDecidableFalse
 
 
-abbrev epsilon_rule (q : Q): ContextFreeRule T (N M) := ⟨N.list q [] q ,[]⟩
+abbrev AllStackPushes (M : PDA Q T S) : Set (List S) :=
+  (Prod.snd '' ⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
+  Prod.snd '' ⋃(q : Q)(Z : S), M.transition_fun' q Z
+
+theorem allStackPushes_finite (M : PDA Q T S): (AllStackPushes M).Finite := by
+  rw [AllStackPushes]
+  rw [Set.finite_union]
+  refine ⟨?_,?_⟩
+  · let A := ⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z
+    have a_finite : A.Finite := by
+      apply Set.finite_iUnion
+      intro q
+      apply Set.finite_iUnion
+      intro a
+      apply Set.finite_iUnion
+      intro Z
+      exact M.finite q a Z
+    let B := Prod.snd '' A
+    have b_finite : B.Finite := by
+      apply Set.Finite.image
+      exact a_finite
+    simp_all
+  · let A := ⋃(q : Q)(Z : S), M.transition_fun' q Z
+    have a_finite : A.Finite := by
+      apply Set.finite_iUnion
+      intro q
+      apply Set.finite_iUnion
+      intro Z
+      exact M.finite' q Z
+    let B := Prod.snd '' A
+    have b_finite : B.Finite := by
+      apply Set.Finite.image
+      exact a_finite
+    simp_all
+
+abbrev max_push (M : PDA Q T S) : ℕ :=
+  ((allStackPushes_finite M).image (λ α ↦ α.length)).toFinset.max'
+    (by rw [Set.toFinset_nonempty]; exact h_M_not_trivial)
+
+inductive AllowedString (M : PDA Q T S) : (List S) → Prop where
+  | base (γ : List S)(h : γ ∈ AllStackPushes M) : AllowedString M γ
+  | step (a : S)(γ : List S)(h : AllowedString M (a::γ)) : AllowedString M γ
+
+inductive N (M: PDA Q T S)  where
+  | start : N M
+  | single : Q → S → Q → N M
+  | list : Q → {α : List S // α.length < 50} → Q → N M
+
+abbrev epsilon_rule (q : Q): ContextFreeRule T (N M) := ⟨N.list q ⟨[], by simp⟩ q ,[]⟩
+
+abbrev compute_rule (q q₁: Q) (a : T) (Z : S) : Set (ContextFreeRule T (N M)) :=
+    (λ (p, α) ↦ ⟨N.single q Z p, [nonterminal (N.list q₁ α p)]⟩) '' M.transition_fun q a Z
+
 abbrev compute_rule (q p q₁: Q) (a : T) (Z : S) (α : List S)
     (_ : (q₁, α) ∈ M.transition_fun q a Z): ContextFreeRule T (N M) :=
-  ⟨N.single q Z p, [terminal a, nonterminal (N.list q₁ α p)]⟩
+  ⟨N.single q Z p, [terminal a, nonterminal (N.list q₁ ⟨α, by ⟩ p)]⟩
 abbrev compute_rule' (q p q₁: Q) (Z : S) (α : List S)
     (_ : (q₁, α) ∈ M.transition_fun' q Z): ContextFreeRule T (N M) :=
   ⟨N.single q Z p, [nonterminal (N.list q₁ α p)]⟩
-abbrev split_rule (q q₁ p: Q)(Z : S)(α : List S) : ContextFreeRule T (N M) :=
-  ⟨N.list q (Z::α) p, [nonterminal (N.single q Z q₁),nonterminal (N.list q₁ α p)]⟩
+
+abbrev split_rule (q₁:Q) :(n : N M) →  Set (ContextFreeRule T (N M))
+  | N.start => ∅
+  | N.single _ _ _=> ∅
+  | N.list _ ⟨[], _⟩ _ => ∅
+  | N.list p ⟨Z::α, h⟩  q =>
+    {⟨N.list q ⟨(Z::α),h⟩ p, [nonterminal (N.single q Z q₁),nonterminal (N.list q₁ ⟨α, by
+    rw [List.length_cons] at h;linarith [h] ⟩ p)]⟩}
+
 abbrev start_rule (q p: Q): ContextFreeRule T (N M) :=
   ⟨N.start, [nonterminal (N.single p M.start_symbol q)]⟩
 
