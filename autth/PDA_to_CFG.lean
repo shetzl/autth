@@ -169,7 +169,7 @@ theorem push_le_max_push' (α : List S)(q : Q)(Z : S)
   apply Set.mem_of_subset_of_mem this
   exact h
 
-abbrev epsilon_rule (q : Q): ContextFreeRule T (N M) := ⟨N.list q [] q ,[]⟩
+abbrev epsilon_rule (q : Q): Set (ContextFreeRule T (N M)) := {⟨N.list q [] q ,[]⟩}
 
 abbrev compute_rule (q p: Q) (a : T) (Z : S) : Set (ContextFreeRule T (N M)) :=
   (λ ⟨q₁,α⟩ ↦ ⟨N.single q Z p, [terminal a, nonterminal (N.list q₁ α p)]⟩) '' M.transition_fun q a Z
@@ -187,4 +187,32 @@ abbrev split_rule (q₁:Q) :(n : N M) →  Set (ContextFreeRule T (N M))
 abbrev start_rule (q p: Q): Set (ContextFreeRule T (N M)) :=
   {⟨N.start, [nonterminal (N.single p M.start_symbol q)]⟩}
 
-abbrev epsilon_rules : List (ContextFreeRule T (N M)) := (Finset.univ.image epsilon_rule).toList
+abbrev RuleSet : Set (ContextFreeRule T (N M)) :=
+  (⋃q:Q,  epsilon_rule q) ∪ (⋃(q:Q)(p:Q)(a:T)(Z:S), compute_rule q p a Z)
+  ∪ (⋃(q:Q)(p:Q)(Z:S), compute_rule' q p Z) ∪ (⋃(q:Q)(n ∈ AllowedNonterminals), split_rule q n)
+
+theorem ruleSet_finite : (RuleSet : Set (ContextFreeRule T (N M))).Finite := by
+  dsimp [RuleSet]
+  repeat rw [Set.finite_union]
+  simp only [and_assoc]
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · apply Set.finite_iUnion
+    intro q
+    dsimp [epsilon_rule]
+    apply Set.finite_singleton
+  · repeat (apply Set.finite_iUnion; intro)
+    dsimp [compute_rule]
+    apply Set.Finite.image
+    apply M.finite
+  · repeat (apply Set.finite_iUnion; intro)
+    dsimp [compute_rule]
+    apply Set.Finite.image
+    apply M.finite'
+  · apply Set.finite_iUnion
+    intro
+    apply Set.Finite.biUnion allowedNonterminal_finite
+    intro n hn
+    rcases n with _|_|⟨_,_|_,_⟩ <;> dsimp [split_rule] <;> simp
+
+
+abbrev rules : List (ContextFreeRule T (N M)) := ruleSet_finite.toFinset.toList
