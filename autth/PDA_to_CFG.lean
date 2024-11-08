@@ -36,7 +36,6 @@ instance : DecidableEq (ContextFreeRule T (N M)) := by
   exact instDecidableFalse
   exact instDecidableFalse
   exact instDecidableFalse
-#check List.finite_length_le
 
 abbrev AllStackPushes (M : PDA Q T S) : Set (List S) :=
   (Prod.snd '' ⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
@@ -84,31 +83,29 @@ inductive AllowedString (M : PDA Q T S) : (List S) → Prop where
 inductive N (M: PDA Q T S)  where
   | start : N M
   | single : Q → S → Q → N M
-  | list : Q → {α : List S // α.length ≤ max_push M+1} → Q → N M
+  | list : Q → List S → Q → N M
 
-abbrev epsilon_rule (q : Q): ContextFreeRule T (N M) := ⟨N.list q ⟨[], by simp⟩ q ,[]⟩
+abbrev UseNonterminal : N M → Prop
+  | N.start => True
+  | N.single _ _ _ => True
+  | N.list _ α _ => α.length ≤ max_push M
+
+abbrev UsedNonterminals := {n : N M | UseNonterminal n}
+
+abbrev epsilon_rule (q : Q): ContextFreeRule T (N M) := ⟨N.list q [] q ,[]⟩
 
 abbrev compute_rule (q p: Q) (a : T) (Z : S) : Set (ContextFreeRule T (N M)) :=
-  {r : ContextFreeRule T N |∃(α : List S)(q₁ : Q) : (h : )
-    r = ⟨N.single q Z p, [nonterminal (N.list q₁ ⟨α, ⟩ p)]⟩}
+  (λ ⟨q₁,α⟩ ↦ ⟨N.single q Z p, [terminal a, nonterminal (N.list q₁ α p)]⟩) '' M.transition_fun q a Z
 
-abbrev compute_rule' (q p : Q)(Z : S) : Set (ContextFreeRule T (N M)) :=
-    (λ (q₁, α) ↦ ⟨N.single q Z p, [nonterminal (N.list q₁ α p)]⟩) '' M.transition_fun' q Z
-
-abbrev compute_rule (q p q₁: Q) (a : T) (Z : S) (α : List S)
-    (_ : (q₁, α) ∈ M.transition_fun q a Z): ContextFreeRule T (N M) :=
-  ⟨N.single q Z p, [terminal a, nonterminal (N.list q₁ ⟨α, by ⟩ p)]⟩
-abbrev compute_rule' (q p q₁: Q) (Z : S) (α : List S)
-    (_ : (q₁, α) ∈ M.transition_fun' q Z): ContextFreeRule T (N M) :=
-  ⟨N.single q Z p, [nonterminal (N.list q₁ α p)]⟩
+abbrev compute_rule' (q p: Q) (Z : S) : Set (ContextFreeRule T (N M)) :=
+  (λ ⟨q₁,α⟩ ↦ ⟨N.single q Z p, [nonterminal (N.list q₁ α p)]⟩) '' M.transition_fun' q Z
 
 abbrev split_rule (q₁:Q) :(n : N M) →  Set (ContextFreeRule T (N M))
   | N.start => ∅
   | N.single _ _ _=> ∅
-  | N.list _ ⟨[], _⟩ _ => ∅
-  | N.list p ⟨Z::α, h⟩  q =>
-    {⟨N.list q ⟨(Z::α),h⟩ p, [nonterminal (N.single q Z q₁),nonterminal (N.list q₁ ⟨α, by
-    rw [List.length_cons] at h;linarith [h] ⟩ p)]⟩}
+  | N.list _ [] _ => ∅
+  | N.list p (Z::α)  q =>
+    {⟨N.list q (Z::α) p, [nonterminal (N.single q Z q₁),nonterminal (N.list q₁ α p)]⟩}
 
 abbrev start_rule (q p: Q): Set (ContextFreeRule T (N M)) :=
   {⟨N.start, [nonterminal (N.single p M.start_symbol q)]⟩}
