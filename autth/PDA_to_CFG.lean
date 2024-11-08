@@ -17,9 +17,9 @@ grammar and prove than that the languages are equal.
 -- In this whole section M will be the PDA we want to convert to a grammar
 
 noncomputable section
+open Classical
 
 variable {Q T S : Type} [Fintype Q] [Fintype T] [Fintype S]
-    [DecidableEq Q][DecidableEq T][DecidableEq S]
 
 variable {M : PDA Q T S}
 variable (h_M_not_trivial : ((⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
@@ -27,15 +27,7 @@ variable (h_M_not_trivial : ((⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) 
 --abbrev max_push (M : PDA Q T S)
 open Symbol
 
-instance : DecidableEq (ContextFreeRule T (N M)) := by
-  intro ⟨n₁, α₁⟩ ⟨n₂, α₂⟩
-  simp only [ContextFreeRule.mk.injEq]
-  by_cases h₁ : n₁=n₂  <;>
-  by_cases h₂ : α₁=α₂ <;> simp_all
-  exact instDecidableTrue
-  exact instDecidableFalse
-  exact instDecidableFalse
-  exact instDecidableFalse
+
 
 abbrev AllStackPushes (M : PDA Q T S) : Set (List S) :=
   (Prod.snd '' ⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
@@ -84,6 +76,8 @@ inductive N (M: PDA Q T S)  where
   | start : N M
   | single : Q → S → Q → N M
   | list : Q → List S → Q → N M
+
+
 
 abbrev UseNonterminal : N M → Prop
   | N.start => True
