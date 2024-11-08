@@ -22,18 +22,15 @@ open Classical
 variable {Q T S : Type} [Fintype Q] [Fintype T] [Fintype S]
 
 variable {M : PDA Q T S}
-variable (h_M_not_trivial : ((⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
-  (⋃(q : Q)(Z : S), M.transition_fun' q Z)).Nonempty)
+
 --abbrev max_push (M : PDA Q T S)
 open Symbol
-
-
 
 abbrev AllStackPushes (M : PDA Q T S) : Set (List S) :=
   (Prod.snd '' ⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
   Prod.snd '' ⋃(q : Q)(Z : S), M.transition_fun' q Z
 
-theorem allStackPushes_finite (M : PDA Q T S): (AllStackPushes M).Finite := by
+theorem allStackPushes_finite (M : PDA Q T S) : (AllStackPushes M).Finite := by
   rw [AllStackPushes]
   rw [Set.finite_union]
   refine ⟨?_,?_⟩
@@ -64,27 +61,113 @@ theorem allStackPushes_finite (M : PDA Q T S): (AllStackPushes M).Finite := by
       exact a_finite
     simp_all
 
-abbrev max_push (M : PDA Q T S) : ℕ :=
-  ((allStackPushes_finite M).image (λ α ↦ α.length)).toFinset.max.unbot' 1
+abbrev AllStackPushes' (M : PDA Q T S): Finset (List S) :=
+  (allStackPushes_finite M).toFinset
 
-
-inductive AllowedString (M : PDA Q T S) : (List S) → Prop where
-  | base (γ : List S)(h : γ ∈ AllStackPushes M) : AllowedString M γ
-  | step (a : S)(γ : List S)(h : AllowedString M (a::γ)) : AllowedString M γ
+abbrev max_push (M : PDA Q T S)  := max ((AllStackPushes' M).image (λ α ↦ α.length)).max 1
 
 inductive N (M: PDA Q T S)  where
   | start : N M
   | single : Q → S → Q → N M
-  | list : Q → List S → Q → N M
+  | list : Q → List S  → Q → N M
 
-
-
-abbrev UseNonterminal : N M → Prop
+abbrev N.IsAllowed: N M → Prop
   | N.start => True
   | N.single _ _ _ => True
   | N.list _ α _ => α.length ≤ max_push M
 
-abbrev UsedNonterminals := {n : N M | UseNonterminal n}
+abbrev AllowedNonterminals : Set (N M) := {n : N M | n.IsAllowed}
+
+theorem allowedNonterminal_finite : (AllowedNonterminals : Set (N M)).Finite  := by
+  let S₁ : Set (N M) := ⋃ (q : Q)(Z : S)(p : Q), {N.single q Z p}
+  let S₂ : Set (List S) := {α : List S | α.length  ≤ max_push M}
+  let S₃ : Set (N M) := ⋃ (q : Q)(p : Q)(α ∈ S₂), {N.list q α p}
+  have h_s₁ : S₁.Finite := by
+    dsimp [S₁]
+    repeat (apply Set.finite_iUnion; intro)
+    apply Set.finite_singleton
+  have h_s₂ : S₂.Finite := by
+    dsimp [S₂]
+    induction' max_push M using WithBot.recBotCoe with n
+    · simp
+    · convert_to {α : List S| α.length ≤ n}.Finite
+      · ext
+        simp [Set.mem_setOf_eq]
+        convert WithBot.coe_le_coe
+      · apply List.finite_length_le
+  have h_s₃ : S₃.Finite := by
+    repeat (apply Set.finite_iUnion; intro)
+    apply Set.Finite.biUnion h_s₂
+    intros
+    apply Set.finite_singleton
+  have h_u : (S₁ ∪ S₃ ∪ {N.start}).Finite := by
+    repeat rw [Set.finite_union]
+    exact ⟨⟨h_s₁, h_s₃⟩, Set.finite_singleton _⟩
+  have : AllowedNonterminals ⊆ S₁ ∪ S₃ ∪ {N.start} := by
+    intro n hn
+    rcases n with _|⟨q,Z,p⟩|⟨q,α,p⟩
+    · rw [Set.mem_union]
+      right
+      rfl
+    · repeat rw [Set.mem_union]
+      left
+      left
+      repeat rw [Set.mem_iUnion]
+      use q
+      rw [Set.mem_iUnion]
+      use Z
+      rw [Set.mem_iUnion]
+      use p
+      rfl
+    · repeat rw [Set.mem_union]
+      left
+      right
+      rw [Set.mem_setOf] at hn
+      dsimp [N.IsAllowed] at hn
+      have hα : α ∈ S₂ := by rw [Set.mem_setOf]; exact hn
+      rw [Set.mem_iUnion₂]
+      use q, p
+      apply Set.mem_biUnion hα
+      rfl
+  exact Set.Finite.subset h_u this
+
+theorem push_le_max_push (α : List S)(q : Q)(Z : S)(a : T)
+    (h : α ∈ Prod.snd '' M.transition_fun q a Z): α.length ≤ max_push M := by
+  rw [max_push]
+  apply le_max_of_le_left
+  apply Finset.le_max
+  rw [Finset.mem_image]
+  use α
+  refine ⟨?_, by simp⟩
+  rw [Set.Finite.mem_toFinset]
+  rw [Set.mem_union]
+  left
+  have :  M.transition_fun q a Z ⊆  ⋃ q, ⋃ a, ⋃ Z, M.transition_fun q a Z := by
+    intro x hx
+    simp only [Set.mem_iUnion]
+    use q, a, Z
+  have  := Set.image_subset Prod.snd this
+  apply Set.mem_of_subset_of_mem this
+  exact h
+
+theorem push_le_max_push' (α : List S)(q : Q)(Z : S)
+    (h : α ∈ Prod.snd '' M.transition_fun' q Z): α.length ≤ max_push M := by
+  rw [max_push]
+  apply le_max_of_le_left
+  apply Finset.le_max
+  rw [Finset.mem_image]
+  use α
+  refine ⟨?_, by simp⟩
+  rw [Set.Finite.mem_toFinset]
+  rw [Set.mem_union]
+  right
+  have : M.transition_fun' q Z ⊆  ⋃ q, ⋃ Z, M.transition_fun' q Z := by
+    intro x hx
+    simp only [Set.mem_iUnion]
+    use q, Z
+  have  := Set.image_subset Prod.snd this
+  apply Set.mem_of_subset_of_mem this
+  exact h
 
 abbrev epsilon_rule (q : Q): ContextFreeRule T (N M) := ⟨N.list q [] q ,[]⟩
 
@@ -103,7 +186,5 @@ abbrev split_rule (q₁:Q) :(n : N M) →  Set (ContextFreeRule T (N M))
 
 abbrev start_rule (q p: Q): Set (ContextFreeRule T (N M)) :=
   {⟨N.start, [nonterminal (N.single p M.start_symbol q)]⟩}
-
-#check (Finset.univ : Finset Q)
 
 abbrev epsilon_rules : List (ContextFreeRule T (N M)) := (Finset.univ.image epsilon_rule).toList
