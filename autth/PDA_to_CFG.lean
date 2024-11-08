@@ -216,3 +216,9 @@ theorem ruleSet_finite : (RuleSet : Set (ContextFreeRule T (N M))).Finite := by
 
 
 abbrev rules : List (ContextFreeRule T (N M)) := ruleSet_finite.toFinset.toList
+
+abbrev G (M : PDA Q T S) : ContextFreeGrammar T := {
+  NT := N M
+  initial := N.start
+  rules := rules
+}
