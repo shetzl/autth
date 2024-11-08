@@ -17,7 +17,6 @@ grammar and prove than that the languages are equal.
 -- In this whole section M will be the PDA we want to convert to a grammar
 
 noncomputable section
-open Classical
 
 variable {Q T S : Type} [Fintype Q] [Fintype T] [Fintype S]
 
@@ -213,7 +212,6 @@ theorem ruleSet_finite : (RuleSet : Set (ContextFreeRule T (N M))).Finite := by
     apply Set.Finite.biUnion allowedNonterminal_finite
     intro n hn
     rcases n with _|_|⟨_,_|_,_⟩ <;> dsimp [split_rule] <;> simp
-
 
 abbrev rules : List (ContextFreeRule T (N M)) := ruleSet_finite.toFinset.toList
 
