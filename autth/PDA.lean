@@ -57,7 +57,7 @@ def step (r₁ : conf pda) : Set (conf pda) :=
 def Reaches₁ (r₁ r₂ : conf pda) : Prop := r₂ ∈ step r₁
 def Reaches : conf pda → conf pda → Prop := Relation.ReflTransGen Reaches₁
 
-inductive ReachesIn : ℕ → conf pda → conf pda → Prop :=
+inductive ReachesIn : ℕ → conf pda → conf pda → Prop where
   | refl : (r₁ : conf pda)  → ReachesIn 0 r₁ r₁
   | step : {n: ℕ} → {r₁ r₂ r₃ : conf pda} → ReachesIn n r₁ r₂ → Reaches₁ r₂ r₃ → ReachesIn (n+1) r₁ r₃
 

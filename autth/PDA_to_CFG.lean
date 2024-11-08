@@ -1,6 +1,7 @@
 import autth.PDA
 import autth.leftmost_deriv
 import Mathlib.Computability.ContextFreeGrammar
+import Mathlib.Data.Set.Finite
 namespace PDA_to_CFG
 
 /-!
@@ -35,7 +36,7 @@ instance : DecidableEq (ContextFreeRule T (N M)) := by
   exact instDecidableFalse
   exact instDecidableFalse
   exact instDecidableFalse
-
+#check List.finite_length_le
 
 abbrev AllStackPushes (M : PDA Q T S) : Set (List S) :=
   (Prod.snd '' ⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
@@ -73,8 +74,8 @@ theorem allStackPushes_finite (M : PDA Q T S): (AllStackPushes M).Finite := by
     simp_all
 
 abbrev max_push (M : PDA Q T S) : ℕ :=
-  ((allStackPushes_finite M).image (λ α ↦ α.length)).toFinset.max'
-    (by rw [Set.toFinset_nonempty]; exact h_M_not_trivial)
+  ((allStackPushes_finite M).image (λ α ↦ α.length)).toFinset.max.unbot' 1
+
 
 inductive AllowedString (M : PDA Q T S) : (List S) → Prop where
   | base (γ : List S)(h : γ ∈ AllStackPushes M) : AllowedString M γ
@@ -83,12 +84,16 @@ inductive AllowedString (M : PDA Q T S) : (List S) → Prop where
 inductive N (M: PDA Q T S)  where
   | start : N M
   | single : Q → S → Q → N M
-  | list : Q → {α : List S // α.length < 50} → Q → N M
+  | list : Q → {α : List S // α.length ≤ max_push M+1} → Q → N M
 
 abbrev epsilon_rule (q : Q): ContextFreeRule T (N M) := ⟨N.list q ⟨[], by simp⟩ q ,[]⟩
 
-abbrev compute_rule (q q₁: Q) (a : T) (Z : S) : Set (ContextFreeRule T (N M)) :=
-    (λ (p, α) ↦ ⟨N.single q Z p, [nonterminal (N.list q₁ α p)]⟩) '' M.transition_fun q a Z
+abbrev compute_rule (q p: Q) (a : T) (Z : S) : Set (ContextFreeRule T (N M)) :=
+  {r : ContextFreeRule T N |∃(α : List S)(q₁ : Q) : (h : )
+    r = ⟨N.single q Z p, [nonterminal (N.list q₁ ⟨α, ⟩ p)]⟩}
+
+abbrev compute_rule' (q p : Q)(Z : S) : Set (ContextFreeRule T (N M)) :=
+    (λ (q₁, α) ↦ ⟨N.single q Z p, [nonterminal (N.list q₁ α p)]⟩) '' M.transition_fun' q Z
 
 abbrev compute_rule (q p q₁: Q) (a : T) (Z : S) (α : List S)
     (_ : (q₁, α) ∈ M.transition_fun q a Z): ContextFreeRule T (N M) :=
@@ -105,8 +110,8 @@ abbrev split_rule (q₁:Q) :(n : N M) →  Set (ContextFreeRule T (N M))
     {⟨N.list q ⟨(Z::α),h⟩ p, [nonterminal (N.single q Z q₁),nonterminal (N.list q₁ ⟨α, by
     rw [List.length_cons] at h;linarith [h] ⟩ p)]⟩}
 
-abbrev start_rule (q p: Q): ContextFreeRule T (N M) :=
-  ⟨N.start, [nonterminal (N.single p M.start_symbol q)]⟩
+abbrev start_rule (q p: Q): Set (ContextFreeRule T (N M)) :=
+  {⟨N.start, [nonterminal (N.single p M.start_symbol q)]⟩}
 
 #check (Finset.univ : Finset Q)
 
