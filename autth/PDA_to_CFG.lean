@@ -213,7 +213,7 @@ theorem ruleSet_finite : (RuleSet : Set (ContextFreeRule T (N M))).Finite := by
     intro n hn
     rcases n with _|_|⟨_,_|_,_⟩ <;> dsimp [split_rule] <;> simp
 
-abbrev rules : List (ContextFreeRule T (N M)) := ruleSet_finite.toFinset.toList
+abbrev rules : Finset (ContextFreeRule T (N M)) := ruleSet_finite.toFinset
 
 abbrev G (M : PDA Q T S) : ContextFreeGrammar T := {
   NT := N M

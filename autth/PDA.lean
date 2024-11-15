@@ -1,7 +1,6 @@
 import Mathlib.Data.Set.Lattice
 import Mathlib.Data.Set.Function
 import Mathlib.Tactic
-import Mathlib.Data.List.Join
 import Mathlib.Util.Delaborators
 import Mathlib.Computability.ContextFreeGrammar
 import Mathlib.Computability.EpsilonNFA
@@ -321,3 +320,4 @@ theorem reaches_on_empty_stack {q p: Q}{w w': List T}{α : List S}:
 
 theorem reaches_of_reachesIn  {n: ℕ}(h: pda.ReachesIn n r₁ r₂) : pda.Reaches r₁ r₂ :=
   reaches_iff_reachesIn.mpr ⟨n, h⟩
+
