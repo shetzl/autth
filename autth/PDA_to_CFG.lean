@@ -24,6 +24,8 @@ variable {M : PDA Q T S}
 
 --abbrev max_push (M : PDA Q T S)
 open Symbol
+open PDA
+open ContextFreeGrammar
 
 abbrev AllStackPushes (M : PDA Q T S) : Set (List S) :=
   (Prod.snd '' ⋃(q : Q)(a : T)(Z : S), M.transition_fun q a Z) ∪
@@ -220,3 +222,40 @@ abbrev G (M : PDA Q T S) : ContextFreeGrammar T := {
   initial := N.start
   rules := rules
 }
+
+theorem produces_epsilon (q : Q) :
+    (G M).Produces [nonterminal (N.list q [] q)] (List.map terminal []) := by
+  let r : ContextFreeRule T (N M) := ⟨N.list q [] q ,[]⟩
+  have hr : r ∈ (G M).rules  := by
+    rw [Set.Finite.mem_toFinset]
+    simp only [RuleSet,Set.mem_union]
+    repeat left
+    rw [Set.mem_iUnion]
+    use q
+    simp [r]
+  use r, hr
+  rw [List.map_nil]
+  simp [ContextFreeRule.rewrites_iff]
+
+
+theorem derives_of_reachesIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
+    (hγ : γ.length ≤ max_push M) (h : M.ReachesIn n ⟨q,x,γ⟩ ⟨p,[],[]⟩) :
+    (G M).Derives [nonterminal (N.list q γ p)] (x.map terminal) := by
+  induction' n with n ih generalizing x γ
+  · apply reachesIn_zero at h
+    injection h with h₁ h₂ h₃
+    rw [h₁,h₂,h₃]
+    apply Produces.single
+    exact produces_epsilon _
+  · rcases γ with _ | ⟨Z, γ⟩
+    · have := reaches_iff_reachesIn.mpr ⟨n+1, h⟩
+      obtain ⟨rfl,_,rfl⟩:= reaches_on_empty_stack  this
+      apply Produces.single
+      exact produces_epsilon _
+    · obtain ⟨⟨q₁, x, γ'⟩, h₁, h₂⟩ := reachesIn_iff_split_first.mpr h
+      rw [←reaches₁_iff_reachesIn_one] at h₁
+      rcases reaches₁_push h₁ with ⟨a, y, q₁, α, rfl, hc⟩ | h₁
+      · injection hc with hc₁ hc₂ hc₃
+        rw [hc₁,hc₂,hc₃] at h₁ h₂
+        sorry
+      sorry

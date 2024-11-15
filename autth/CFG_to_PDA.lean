@@ -274,7 +274,7 @@ theorem G_derives_of_M_reaches {α : List (Symbol T G.NT)} {w : List T}
     rcases α with _|⟨⟨a⟩|⟨N⟩,α'⟩
     · apply reaches_of_reachesIn at h₁
       apply reaches_on_empty_stack at h₁
-      rw [←h₁.1,h₁.2] at h₂
+      rw [←h₁.1,h₁.2.1] at h₂
       exact h₂
     · apply M_deterministic_step_of_terminal_stack_cons at h₁
       rw [h₁.1,h₁.2]

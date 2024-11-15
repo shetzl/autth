@@ -295,7 +295,7 @@ theorem reachesIn_pos_of_not_self {n : ℕ} (h : r₁ ≠ r₂) :
     apply Nat.zero_lt_succ
 
 theorem reachesIn_one_on_empty_stack {q p: Q}{w w': List T}{α : List S}:
-    pda.ReachesIn 1 ⟨q, w, []⟩ ⟨p, w', α⟩ → w=w' ∧ α = [] ∧ q=p:= by
+    pda.ReachesIn 1 ⟨q, w, []⟩ ⟨p, w', α⟩ → w=w' ∧ α = [] ∧ q = p:= by
   intro h
   rw [reachesIn_one] at h
   simp only [step] at h
@@ -303,7 +303,7 @@ theorem reachesIn_one_on_empty_stack {q p: Q}{w w': List T}{α : List S}:
   simp [h]
 
 theorem reaches_on_empty_stack {q p: Q}{w w': List T}{α : List S}:
-    pda.Reaches ⟨q, w, []⟩ ⟨p, w', α⟩ → w=w' ∧ α = [] := by
+    pda.Reaches ⟨q, w, []⟩ ⟨p, w', α⟩ → w=w' ∧ α = [] ∧ q = p := by
   intro h
   rw [reaches_iff_reachesIn] at h
   obtain ⟨n,hr⟩ := h
@@ -321,3 +321,26 @@ theorem reaches_on_empty_stack {q p: Q}{w w': List T}{α : List S}:
 theorem reaches_of_reachesIn  {n: ℕ}(h: pda.ReachesIn n r₁ r₂) : pda.Reaches r₁ r₂ :=
   reaches_iff_reachesIn.mpr ⟨n, h⟩
 
+theorem reaches₁_push {q : Q}{x : List T}{Z : S}{γ : List S}{c : pda.conf}
+    (h : pda.Reaches₁ ⟨q, x, Z::γ⟩ c) :
+    (∃(a : T)(y : List T)(p : Q)(α : List S), x = a::y ∧ c = ⟨p, y, α ++ γ⟩) ∨
+    (∃(p : Q)(α : List S), c = ⟨p, x, α ++ γ⟩) := by
+  rcases x with _ | ⟨a, y⟩
+  · right
+    simp only [Reaches₁, step] at h
+    obtain ⟨p, β, _, h⟩ := Set.mem_setOf.mp h
+    use p, β
+  · simp only [Reaches₁, step] at h
+    rw [Set.mem_union] at h
+    rcases h with h|h
+    · obtain ⟨p, β, _, h⟩ := Set.mem_setOf.mp h
+      left
+      use a, y, p, β
+    · obtain ⟨p, β, _, h⟩ := Set.mem_setOf.mp h
+      right
+      use p, β
+
+theorem split_stack {n : ℕ}{q p : Q}{x : List T}{α β : List S}
+    (h : pda.ReachesIn n ⟨q, x, α ++ β⟩ ⟨p, [], []⟩):
+    ∃(q₁ : Q)(m₁ m₂ : ℕ)(y₁ y₂ : List T), x=y₁++y₂ ∧ m₁ < n ∧ m₂ < n ∧
+    pda.ReachesIn m₁ ⟨q, y₁, α⟩ ⟨q₁, [], []⟩ ∧ pda.ReachesIn m₂ ⟨q₁, y₂, β⟩ ⟨p, [], []⟩ := by sorry
