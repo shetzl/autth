@@ -402,13 +402,13 @@ theorem derivation_empty {n : ℕ}{x : List T}{q p : Q}
     · simp only [Set.mem_iUnion] at hr
       obtain ⟨q₀, p₀, a, Z, hr⟩ := hr
       simp only [compute_rule, Set.mem_image] at hr
-      obtain ⟨q₁, α, hr⟩ := hr
+      obtain ⟨_, _, hr⟩ := hr
       rw [hr.symm] at h₁
       cases h₁
     · simp only [Set.mem_iUnion] at hr
       obtain ⟨q₀, p₀, Z, hr⟩ := hr
       simp only [compute_rule', Set.mem_image] at hr
-      obtain ⟨q₁, α, hr⟩ := hr
+      obtain ⟨_, _, hr⟩ := hr
       rw [hr.symm] at h₁
       cases h₁
     · simp only [Set.mem_iUnion] at hr
@@ -424,13 +424,98 @@ theorem derivation_empty {n : ℕ}{x : List T}{q p : Q}
         rw [hr] at h₁
         cases h₁
 
+theorem produces_cons {q p : Q}{Z : S} {γ : List S}
+    {u : List (Symbol T (N M))} (h : (G M).ProducesLeftmost [nonterminal (N.list q (Z::γ) p)] u):
+    ∃q₁:Q, u = [nonterminal (N.single q Z q₁), nonterminal (N.list q₁ γ p)] := by
+  obtain ⟨r, hr, h⟩ := h
+  simp only [Set.Finite.mem_toFinset, Set.mem_union, or_assoc] at hr
+  rcases hr with hr | hr | hr | hr
+  · simp only [Set.mem_iUnion] at hr
+    obtain ⟨q₀, hr⟩ := hr
+    simp only [epsilon_rule, Set.mem_singleton_iff] at hr
+    rw [hr] at h
+    cases h
+  · simp only [Set.mem_iUnion] at hr
+    obtain ⟨q₀, p₀, a, Z, hr⟩ := hr
+    simp only [compute_rule, Set.mem_image] at hr
+    obtain ⟨_, _, hr⟩ := hr
+    rw [hr.symm] at h
+    cases h
+  · simp only [Set.mem_iUnion] at hr
+    obtain ⟨q₀, p₀, Z, hr⟩ := hr
+    simp only [compute_rule', Set.mem_image] at hr
+    obtain ⟨_, _, hr⟩ := hr
+    rw [hr.symm] at h
+    cases h
+  · simp only [Set.mem_iUnion] at hr
+    obtain ⟨q₀, n, hr⟩ := hr
+    obtain ⟨hn, hr⟩ := hr
+    simp only [split_rule] at hr
+    rcases n with _ | _ | ⟨q₁, _|⟨Z,α⟩, p₁⟩
+    · simp_all
+    · simp_all
+    · simp_all
+    · dsimp at hr
+      rw [Set.mem_singleton_iff] at hr
+      rw [hr] at h
+      cases h
+      use q₀
+      simp
+
+theorem produces_single {q p : Q}{Z : S}
+    {u v: List (Symbol T (N M))}
+    (h : (G M).ProducesLeftmost ((nonterminal (N.single q Z p)) :: v) u) :
+    (∃(α : List S)(q₀ : Q)(a : T), (q₀, α) ∈ M.transition_fun q a Z
+      ∧ u = (terminal) a :: (nonterminal (N.list q₀ α p)) :: v) ∨
+    (∃(α : List S)(q₀ : Q), (q₀, α) ∈ M.transition_fun' q Z
+      ∧ u = (nonterminal (N.list q₀ α p)) :: v) := by
+  obtain ⟨r, hr, h⟩ := h
+  simp only [Set.Finite.mem_toFinset, Set.mem_union, or_assoc] at hr
+  rcases hr with hr | hr | hr | hr
+  · simp only [Set.mem_iUnion] at hr
+    obtain ⟨q₀, hr⟩ := hr
+    simp only [epsilon_rule, Set.mem_singleton_iff] at hr
+    rw [hr] at h
+    cases h
+  · simp only [Set.mem_iUnion] at hr
+    obtain ⟨q₀, p₀, a, Z, hr⟩ := hr
+    simp only [compute_rule, Set.mem_image] at hr
+    obtain ⟨⟨q₀, α⟩, hα, hr⟩ := hr
+    rw [hr.symm] at h
+    left
+    cases h
+    · use α, q₀, a
+      refine ⟨hα, ?_⟩
+      · simp
+  · simp only [Set.mem_iUnion] at hr
+    obtain ⟨q₀, p₀, Z, hr⟩ := hr
+    simp only [compute_rule', Set.mem_image] at hr
+    obtain ⟨⟨q₀, α⟩, hα, hr⟩ := hr
+    rw [hr.symm] at h
+    right
+    cases h
+    · use α, q₀
+      refine ⟨hα, ?_⟩
+      · simp
+  · simp only [Set.mem_iUnion] at hr
+    obtain ⟨q₀, n, hr⟩ := hr
+    obtain ⟨hn, hr⟩ := hr
+    simp only [split_rule] at hr
+    rcases n with _ | _ | ⟨q₁, _|⟨Z,α⟩, p₁⟩
+    · simp_all
+    · simp_all
+    · simp_all
+    · dsimp at hr
+      rw [Set.mem_singleton_iff] at hr
+      rw [hr] at h
+      cases h
 
 theorem reachesIn_of_derivesLeftmostIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
     (hγ : γ.length ≤ max_push M)
     (h : (G M).DerivesLeftmostIn [nonterminal (N.list q γ p)] (x.map terminal) n) :
     M.Reaches ⟨q, x, γ⟩ ⟨p, [], []⟩ := by
   induction' n using Nat.strong_induction_on with n ih
-  · cases γ
+  · rcases γ with _ | ⟨Z,γ'⟩
     · apply derivation_empty at h
       simp only [h]
       rfl
@@ -438,3 +523,10 @@ theorem reachesIn_of_derivesLeftmostIn {γ : List S}{q p : Q}{x : List T}{n : �
       · obtain h := h.zero
         cases x <;> simp at h
       · obtain ⟨u, h₁, h₂⟩ := h.head_of_succ
+        obtain ⟨q₁, rfl⟩ := produces_cons h₁
+        rcases n with _ | ⟨n⟩
+        · have := h₂.zero
+          cases x <;> simp at this
+        · obtain ⟨u, h₂₁, h₂₂⟩ := h₂.head_of_succ
+          obtain hu | hu := produces_single h₂₁
+          sorry
