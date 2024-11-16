@@ -254,7 +254,7 @@ theorem derives_of_reachesIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
       exact produces_epsilon _
     · obtain ⟨⟨q₁, x, γ'⟩, h₁, h₂⟩ := reachesIn_iff_split_first.mpr h
       rw [←reaches₁_iff_reachesIn_one] at h₁
-      rcases reaches₁_push h₁ with ⟨a, y, q₁, α, rfl, hc⟩ | h₁
+      rcases reaches₁_push h₁ with ⟨a, y, q₁, α, rfl, hc, hγ⟩ | h₁
       · injection hc with hc₁ hc₂ hc₃
         rw [hc₁,hc₂,hc₃] at h₁ h₂
         sorry
