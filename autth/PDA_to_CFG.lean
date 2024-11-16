@@ -379,6 +379,7 @@ theorem derives_of_reachesIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
             exact h₂₁
         simp [hy]
 
+
 theorem derivation_empty {n : ℕ}{x : List T}{q p : Q}
     (h : (G M).DerivesLeftmostIn [nonterminal (N.list q [] p)] (List.map terminal x) n) :
     q = p ∧ x = [] := by
@@ -394,33 +395,22 @@ theorem derivation_empty {n : ℕ}{x : List T}{q p : Q}
       obtain ⟨q₀, hr⟩ := hr
       simp only [epsilon_rule, Set.mem_singleton_iff] at hr
       rw [hr] at h₁
-      rw [ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
-      obtain ⟨u₁, u₂, h₁, h₁'⟩ := h₁
-      dsimp only at h₁ h₂
-      cases u₁
-      · cases u₂
-        · change v = [] at h₁'
-          simp only [h₁'] at *
-          apply derivesLeftmostIn_empty at h₂
-          simp_all
-        · simp_all
-      · simp_all
+      cases h₁
+      · simp at h₂
+        refine ⟨rfl, ?_⟩
+        exact (List.map_eq_nil_iff.mp h₂.empty)
     · simp only [Set.mem_iUnion] at hr
       obtain ⟨q₀, p₀, a, Z, hr⟩ := hr
       simp only [compute_rule, Set.mem_image] at hr
       obtain ⟨q₁, α, hr⟩ := hr
       rw [hr.symm] at h₁
-      simp only [ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
-      obtain ⟨p, q, h₁⟩ := h₁
-      cases p <;> simp at h₁
+      cases h₁
     · simp only [Set.mem_iUnion] at hr
       obtain ⟨q₀, p₀, Z, hr⟩ := hr
       simp only [compute_rule', Set.mem_image] at hr
       obtain ⟨q₁, α, hr⟩ := hr
       rw [hr.symm] at h₁
-      simp only [ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
-      obtain ⟨p, q, h₁⟩ := h₁
-      cases p <;> simp at h₁
+      cases h₁
     · simp only [Set.mem_iUnion] at hr
       obtain ⟨q₀, n, hr⟩ := hr
       obtain ⟨hn, hr⟩ := hr
@@ -431,9 +421,9 @@ theorem derivation_empty {n : ℕ}{x : List T}{q p : Q}
       · simp_all
       · dsimp at hr
         rw [Set.mem_singleton_iff] at hr
-        rw [hr, ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
-        obtain ⟨p₁, q₁, h₁⟩ := h₁
-        cases p₁ <;> simp_all
+        rw [hr] at h₁
+        cases h₁
+
 
 theorem reachesIn_of_derivesLeftmostIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
     (hγ : γ.length ≤ max_push M)

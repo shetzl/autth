@@ -115,7 +115,7 @@ lemma DerivesLeftmostIn.append_right {v w : List (Symbol T g.NT)}
   | refl => left
   | tail _ _ _ _ last ih => exact ih.trans_producesLeftmost <| last.append_right p
 
-theorem derivesLeftmostIn_empty {n : ℕ} {v : List (Symbol T g.NT)}
+theorem DerivesLeftmostIn.empty {n : ℕ} {v : List (Symbol T g.NT)}
     (h : g.DerivesLeftmostIn [] v n) : v = [] := by
   rcases n with _ | ⟨n⟩
   · have := h.zero
@@ -123,11 +123,7 @@ theorem derivesLeftmostIn_empty {n : ℕ} {v : List (Symbol T g.NT)}
   · obtain ⟨u, h₁, h₂⟩ := h.head_of_succ
     rw [ProducesLeftmost] at h₁
     obtain ⟨r, hr, h₁⟩ := h₁
-    rw [ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
-    obtain ⟨p, q, h⟩ := h₁
-    simp at h
-
-
+    cases h₁
 
 theorem derivesLeftmostIn_cons {n : ℕ}{x : Symbol T g.NT} {v u : List (Symbol T g.NT)}
     (h : g.DerivesLeftmostIn (x :: v) u n) :
