@@ -182,7 +182,7 @@ abbrev split_rule (q₁:Q) :(n : N M) →  Set (ContextFreeRule T (N M))
   | N.start => ∅
   | N.single _ _ _=> ∅
   | N.list _ [] _ => ∅
-  | N.list p (Z::α)  q =>
+  | N.list q (Z::α)  p =>
     {⟨N.list q (Z::α) p, [nonterminal (N.single q Z q₁),nonterminal (N.list q₁ α p)]⟩}
 
 abbrev start_rule (q p: Q): Set (ContextFreeRule T (N M)) :=
@@ -237,11 +237,65 @@ theorem produces_epsilon (q : Q) :
   rw [List.map_nil]
   simp [ContextFreeRule.rewrites_iff]
 
+theorem produces_split (q q₁ p : Q){α : List S}{Z : S}(h : (Z :: α).length ≤ max_push M ):
+    (G M).Produces [nonterminal (N.list q (Z :: α) p)]
+    [nonterminal (N.single q Z q₁), nonterminal (N.list q₁ α p)] := by
+  let r : ContextFreeRule T (N M) :=
+    ⟨N.list q (Z::α) p, [nonterminal (N.single q Z q₁),nonterminal (N.list q₁ α p)]⟩
+  have hr : r ∈ (G M).rules := by
+    simp only [Set.Finite.mem_toFinset, Set.mem_union]
+    repeat right
+    simp only [Set.mem_iUnion]
+    use q₁, N.list q (Z :: α) p
+    refine ⟨?_,?_⟩
+    · rw [Set.mem_setOf]
+      simp only [N.IsAllowed, h]
+    · simp only [split_rule, Set.mem_singleton, r]
+  use r, hr
+  rw [ContextFreeRule.rewrites_iff]
+  use [], []
+  simp
+
+theorem produces_compute {q q₁ p : Q}{α : List S}{a : T}{Z : S}
+    (h : (q₁, α) ∈ M.transition_fun q a Z) :
+    (G M).Produces [nonterminal (N.single q Z p)] [terminal a, nonterminal (N.list q₁ α p)] := by
+  let r : ContextFreeRule T (N M) := ⟨N.single q Z p, [terminal a, nonterminal (N.list q₁ α p)]⟩
+  have hr : r  ∈ (G M).rules := by
+    simp only [Set.Finite.mem_toFinset, Set.mem_union]
+    left
+    left
+    right
+    simp only [Set.mem_iUnion]
+    use q, p, a, Z
+    simp only [Set.mem_image]
+    use (q₁, α)
+  use r, hr
+  rw [ContextFreeRule.rewrites_iff]
+  use [], []
+  simp
+
+theorem produces_compute' {q q₁ p : Q}{α : List S}{Z : S}
+    (h : (q₁, α) ∈ M.transition_fun' q Z) :
+    (G M).Produces [nonterminal (N.single q Z p)] [nonterminal (N.list q₁ α p)] := by
+  let r : ContextFreeRule T (N M) := ⟨N.single q Z p, [nonterminal (N.list q₁ α p)]⟩
+  have hr : r  ∈ (G M).rules := by
+    simp only [Set.Finite.mem_toFinset, Set.mem_union]
+    left
+    right
+    simp only [Set.mem_iUnion]
+    use q, p, Z
+    simp only [Set.mem_image]
+    use (q₁, α)
+  use r, hr
+  rw [ContextFreeRule.rewrites_iff]
+  use [], []
+  simp
 
 theorem derives_of_reachesIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
     (hγ : γ.length ≤ max_push M) (h : M.ReachesIn n ⟨q,x,γ⟩ ⟨p,[],[]⟩) :
     (G M).Derives [nonterminal (N.list q γ p)] (x.map terminal) := by
-  induction' n with n ih generalizing x γ
+  induction' n using Nat.strong_induction_on with n ih generalizing x γ p q
+  rcases n with _ | ⟨n⟩
   · apply reachesIn_zero at h
     injection h with h₁ h₂ h₃
     rw [h₁,h₂,h₃]
@@ -252,10 +306,74 @@ theorem derives_of_reachesIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
       obtain ⟨rfl,_,rfl⟩:= reaches_on_empty_stack  this
       apply Produces.single
       exact produces_epsilon _
-    · obtain ⟨⟨q₁, x, γ'⟩, h₁, h₂⟩ := reachesIn_iff_split_first.mpr h
+    · obtain ⟨⟨q₀, x, γ'⟩, h₁, h₂⟩ := reachesIn_iff_split_first.mpr h
       rw [←reaches₁_iff_reachesIn_one] at h₁
-      rcases reaches₁_push h₁ with ⟨a, y, q₁, α, rfl, hc, hγ⟩ | h₁
-      · injection hc with hc₁ hc₂ hc₃
-        rw [hc₁,hc₂,hc₃] at h₁ h₂
-        sorry
-      sorry
+      rcases reaches₁_push h₁ with ⟨a, y, q₁, α, rfl, hc, hα⟩ | ⟨q₁, α, hc, hα⟩
+      · obtain ⟨rfl, rfl, rfl⟩ := conf.mk.inj hc
+        obtain ⟨q₁, m₁, m₂, y₁, y₂, hy, hm₁, hm₂, h₂₁, h₂₂⟩ := split_stack h₂
+        have hα_allowed : α.length ≤ max_push M  := by
+          apply push_le_max_push
+          rw [Set.mem_image]
+          use (q₀, α)
+        have hγ_allowed : γ.length ≤ max_push M  := by
+          rw [List.length_cons] at hγ
+          have := WithBot.coe_le_coe.mpr (by linarith : γ.length ≤ γ.length + 1)
+          apply le_trans
+          exact this
+          exact hγ
+        apply ih m₁ (Nat.lt_succ_of_le hm₁) hα_allowed at h₂₁
+        apply ih m₂ (Nat.lt_succ_of_le hm₂) hγ_allowed at h₂₂
+        convert calc
+          (G M).Derives
+            [nonterminal (N.list q (Z :: γ) p)]
+            ([nonterminal (N.single q Z q₁)]++[nonterminal (N.list q₁ γ p)]) := by
+              exact (produces_split q q₁ p hγ).single
+          (G M).Derives _
+            ([terminal a, nonterminal (N.list q₀ α q₁)]++[nonterminal (N.list q₁ γ p)]) := by
+              apply Derives.append_right
+              exact (produces_compute hα).single
+          (G M).Derives _
+             ([terminal a, nonterminal (N.list q₀ α q₁)]++ (List.map terminal y₂)) := by
+              apply Derives.append_left
+              exact h₂₂
+          (G M).Derives _
+            ([terminal a] ++ List.map terminal y₁++ (List.map terminal y₂)) := by
+            apply Derives.append_right
+            change (G M).Derives
+              ([terminal a] ++ [nonterminal (N.list q₀ α q₁)])
+              ([terminal a] ++ List.map terminal y₁)
+            apply Derives.append_left
+            exact h₂₁
+        simp [hy]
+      · obtain ⟨rfl, rfl, rfl⟩ := conf.mk.inj hc
+        obtain ⟨q₁, m₁, m₂, y₁, y₂, hy, hm₁, hm₂, h₂₁, h₂₂⟩ := split_stack h₂
+        have hα_allowed : α.length ≤ max_push M  := by
+          apply push_le_max_push'
+          rw [Set.mem_image]
+          use (q₀, α)
+        have hγ_allowed : γ.length ≤ max_push M  := by
+          rw [List.length_cons] at hγ
+          have := WithBot.coe_le_coe.mpr (by linarith : γ.length ≤ γ.length + 1)
+          apply le_trans
+          exact this
+          exact hγ
+        apply ih m₁ (Nat.lt_succ_of_le hm₁) hα_allowed at h₂₁
+        apply ih m₂ (Nat.lt_succ_of_le hm₂) hγ_allowed at h₂₂
+        convert calc
+          (G M).Derives
+            [nonterminal (N.list q (Z :: γ) p)]
+            ([nonterminal (N.single q Z q₁)]++[nonterminal (N.list q₁ γ p)]) := by
+              exact (produces_split q q₁ p hγ).single
+          (G M).Derives _
+            ([nonterminal (N.list q₀ α q₁)]++[nonterminal (N.list q₁ γ p)]) := by
+              apply Derives.append_right
+              exact (produces_compute' hα).single
+          (G M).Derives _
+             ([nonterminal (N.list q₀ α q₁)] ++ (List.map terminal y₂)) := by
+              apply Derives.append_left
+              exact h₂₂
+          (G M).Derives _
+            ( List.map terminal y₁++ (List.map terminal y₂)) := by
+            apply Derives.append_right
+            exact h₂₁
+        simp [hy]
