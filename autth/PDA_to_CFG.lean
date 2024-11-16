@@ -1,5 +1,6 @@
 import autth.PDA
 import autth.leftmost_deriv
+import autth.CountingStepsLeftmost
 import Mathlib.Computability.ContextFreeGrammar
 import Mathlib.Data.Set.Finite
 namespace PDA_to_CFG
@@ -377,3 +378,73 @@ theorem derives_of_reachesIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
             apply Derives.append_right
             exact h₂₁
         simp [hy]
+
+theorem derivation_empty {n : ℕ}{x : List T}{q p : Q}
+    (h : (G M).DerivesLeftmostIn [nonterminal (N.list q [] p)] (List.map terminal x) n) :
+    q = p ∧ x = [] := by
+  rcases n with _|⟨n⟩
+  · have := h.zero
+    cases x <;> simp at this
+  · obtain ⟨v,h₁, h₂⟩ := h.head_of_succ
+    simp only [ProducesLeftmost] at h₁
+    obtain ⟨r, hr, h₁⟩ := h₁
+    simp only [Set.Finite.mem_toFinset, Set.mem_union, or_assoc] at hr
+    rcases hr with hr | hr | hr | hr
+    · simp only [Set.mem_iUnion] at hr
+      obtain ⟨q₀, hr⟩ := hr
+      simp only [epsilon_rule, Set.mem_singleton_iff] at hr
+      rw [hr] at h₁
+      rw [ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
+      obtain ⟨u₁, u₂, h₁, h₁'⟩ := h₁
+      dsimp only at h₁ h₂
+      cases u₁
+      · cases u₂
+        · change v = [] at h₁'
+          simp only [h₁'] at *
+          apply derivesLeftmostIn_empty at h₂
+          simp_all
+        · simp_all
+      · simp_all
+    · simp only [Set.mem_iUnion] at hr
+      obtain ⟨q₀, p₀, a, Z, hr⟩ := hr
+      simp only [compute_rule, Set.mem_image] at hr
+      obtain ⟨q₁, α, hr⟩ := hr
+      rw [hr.symm] at h₁
+      simp only [ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
+      obtain ⟨p, q, h₁⟩ := h₁
+      cases p <;> simp at h₁
+    · simp only [Set.mem_iUnion] at hr
+      obtain ⟨q₀, p₀, Z, hr⟩ := hr
+      simp only [compute_rule', Set.mem_image] at hr
+      obtain ⟨q₁, α, hr⟩ := hr
+      rw [hr.symm] at h₁
+      simp only [ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
+      obtain ⟨p, q, h₁⟩ := h₁
+      cases p <;> simp at h₁
+    · simp only [Set.mem_iUnion] at hr
+      obtain ⟨q₀, n, hr⟩ := hr
+      obtain ⟨hn, hr⟩ := hr
+      simp only [split_rule] at hr
+      rcases n with _ | _ | ⟨q₁, _|⟨Z,α⟩, p₁⟩
+      · simp_all
+      · simp_all
+      · simp_all
+      · dsimp at hr
+        rw [Set.mem_singleton_iff] at hr
+        rw [hr, ContextFreeRule.RewritesLeftmost.rewrites_leftmost_iff] at h₁
+        obtain ⟨p₁, q₁, h₁⟩ := h₁
+        cases p₁ <;> simp_all
+
+theorem reachesIn_of_derivesLeftmostIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
+    (hγ : γ.length ≤ max_push M)
+    (h : (G M).DerivesLeftmostIn [nonterminal (N.list q γ p)] (x.map terminal) n) :
+    M.Reaches ⟨q, x, γ⟩ ⟨p, [], []⟩ := by
+  induction' n using Nat.strong_induction_on with n ih
+  · cases γ
+    · apply derivation_empty at h
+      simp only [h]
+      rfl
+    · rcases n with _ | ⟨n⟩
+      · obtain h := h.zero
+        cases x <;> simp at h
+      · obtain ⟨u, h₁, h₂⟩ := h.head_of_succ
