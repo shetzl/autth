@@ -530,3 +530,4 @@ theorem reachesIn_of_derivesLeftmostIn {γ : List S}{q p : Q}{x : List T}{n : �
         · obtain ⟨u, h₂₁, h₂₂⟩ := h₂.head_of_succ
           obtain hu | hu := produces_single h₂₁
           sorry
+          sorry
