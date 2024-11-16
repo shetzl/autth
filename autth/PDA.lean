@@ -323,8 +323,9 @@ theorem reaches_of_reachesIn  {n: ℕ}(h: pda.ReachesIn n r₁ r₂) : pda.Reach
 
 theorem reaches₁_push {q : Q}{x : List T}{Z : S}{γ : List S}{c : pda.conf}
     (h : pda.Reaches₁ ⟨q, x, Z::γ⟩ c) :
-    (∃(a : T)(y : List T)(p : Q)(α : List S), x = a::y ∧ c = ⟨p, y, α ++ γ⟩) ∨
-    (∃(p : Q)(α : List S), c = ⟨p, x, α ++ γ⟩) := by
+    (∃(a : T)(y : List T)(p : Q)(α : List S), x = a::y ∧ c = ⟨p, y, α ++ γ⟩ ∧
+    (p, α) ∈ pda.transition_fun q a Z) ∨
+    (∃(p : Q)(α : List S), c = ⟨p, x, α ++ γ⟩ ∧  (p, α) ∈ pda.transition_fun' q Z) := by
   rcases x with _ | ⟨a, y⟩
   · right
     simp only [Reaches₁, step] at h
@@ -342,5 +343,39 @@ theorem reaches₁_push {q : Q}{x : List T}{Z : S}{γ : List S}{c : pda.conf}
 
 theorem split_stack {n : ℕ}{q p : Q}{x : List T}{α β : List S}
     (h : pda.ReachesIn n ⟨q, x, α ++ β⟩ ⟨p, [], []⟩):
-    ∃(q₁ : Q)(m₁ m₂ : ℕ)(y₁ y₂ : List T), x=y₁++y₂ ∧ m₁ < n ∧ m₂ < n ∧
-    pda.ReachesIn m₁ ⟨q, y₁, α⟩ ⟨q₁, [], []⟩ ∧ pda.ReachesIn m₂ ⟨q₁, y₂, β⟩ ⟨p, [], []⟩ := by sorry
+    ∃(q₁ : Q)(m₁ m₂ : ℕ)(y₁ y₂ : List T), x=y₁++y₂ ∧ m₁ ≤ n ∧ m₂ ≤ n ∧
+    pda.ReachesIn m₁ ⟨q, y₁, α⟩ ⟨q₁, [], []⟩ ∧ pda.ReachesIn m₂ ⟨q₁, y₂, β⟩ ⟨p, [], []⟩ := by
+  induction' n with n ih generalizing α x q
+  · obtain ⟨rfl, rfl, hα⟩ := conf.mk.inj (reachesIn_zero h)
+    use q, 0, 0, [], []
+    obtain ⟨rfl, rfl⟩ := List.append_eq_nil.mp hα
+    refine ⟨by simp, by simp, by simp, by rfl, by rfl⟩
+  · rcases α with _ | ⟨Z, α⟩
+    · use q, 0, n + 1, [], x
+      refine ⟨by simp, by linarith, by linarith, by rfl, h⟩
+    · obtain ⟨c, h₁, h₂⟩ := reachesIn_iff_split_first.mpr h
+      rw [List.cons_append, ←reaches₁_iff_reachesIn_one] at h₁
+      obtain ⟨a, y, q₀, γ, rfl, rfl, hγ⟩ | ⟨q₀, γ, rfl, hγ⟩ := reaches₁_push h₁
+      · rw [←List.append_assoc] at h₂
+        obtain ⟨q₁, k₁, k₂, y₁, y₂, hy, hk₁, hk₂, ih₁, ih₂⟩ := ih h₂
+        use q₁, k₁+1, k₂, a::y₁, y₂
+        refine ⟨by simp_all, by linarith, by linarith, ?_, ih₂⟩
+        rw [←reachesIn_iff_split_first]
+        use ⟨q₀, y₁, γ ++ α⟩
+        refine ⟨?_, ih₁⟩
+        rw [←reaches₁_iff_reachesIn_one]
+        simp only [Reaches₁, step, Set.mem_union, Set.mem_setOf]
+        left
+        use q₀, γ
+      · rw [←List.append_assoc] at h₂
+        obtain ⟨q₁, k₁, k₂, y₁, y₂, hy, hk₁, hk₂, ih₁, ih₂⟩ := ih h₂
+        use q₁, k₁+1, k₂, y₁, y₂
+        refine ⟨by simp_all, by linarith, by linarith, ?_, ih₂⟩
+        rw [←reachesIn_iff_split_first]
+        use ⟨q₀, y₁, γ ++ α⟩
+        refine ⟨?_, ih₁⟩
+        rw [←reaches₁_iff_reachesIn_one]
+        rcases y₁ with _ | ⟨a, y₁'⟩ <;> simp only [Reaches₁, step, Set.mem_union, Set.mem_setOf]
+        · use q₀, γ
+        · right
+          use q₀, γ
