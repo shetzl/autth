@@ -76,15 +76,9 @@ theorem RewritesLeftmost.rewrites_leftmost_iff {r : ContextFreeRule T N} {u v : 
 theorem RewritesLeftmost.rewrite_terminal (r : ContextFreeRule T N) (w : List T)
     (u : List (Symbol T N)): ¬ RewritesLeftmost r (w.map terminal) u := by
   intro h
-  rw [rewrites_leftmost_iff] at h
-  obtain ⟨p,q,h₁,_⟩ := h
-  symm at h₁
-  rw [List.append_eq_map_iff] at h₁
-  obtain ⟨l₁,_,_,h,_⟩ := h₁
-  symm at h
-  rw [List.append_eq_map_iff] at h
-  obtain ⟨_,l₂,_,_,h⟩ := h
-  rcases l₂ with _|⟨x, xs⟩ <;> simp at h
+  induction' w with x w' ih generalizing u
+  <;> cases u <;> cases h
+  next tail h => exact ih tail h
 
 theorem RewritesLeftmost.append_left {r : ContextFreeRule T N}
     {v w : List (Symbol T N)} (hr : r.RewritesLeftmost v w) (p : List T) :

@@ -125,6 +125,15 @@ theorem DerivesLeftmostIn.empty {n : ℕ} {v : List (Symbol T g.NT)}
     obtain ⟨r, hr, h₁⟩ := h₁
     cases h₁
 
+theorem DerivesLeftmostIn.terminal {n : ℕ} {v : List (Symbol T g.NT)}{x : List T}
+    (h : g.DerivesLeftmostIn (x.map terminal) v n) : v = x.map terminal := by
+  rcases n with _ | ⟨n⟩
+  · have := h.zero
+    exact this
+  · obtain ⟨u, ⟨r, hr, hx⟩, h₂⟩ := h.head_of_succ
+    exfalso
+    exact hx.rewrite_terminal
+
 theorem derivesLeftmostIn_cons {n : ℕ}{x : Symbol T g.NT} {v u : List (Symbol T g.NT)}
     (h : g.DerivesLeftmostIn (x :: v) u n) :
     (∃ (u' : List (Symbol T g.NT)), u = u' ++ v ∧ g.DerivesLeftmostIn [x] u' n) ∨
@@ -157,7 +166,24 @@ theorem derivesLeftmostIn_cons {n : ℕ}{x : Symbol T g.NT} {v u : List (Symbol 
       · exact ⟨o₂, m₁, m₂+1, by linarith, by linarith, by simp_all, hu.2.1,
         hu.2.2.trans_producesLeftmost ⟨r,hr,ho.2.2⟩⟩
 
-
+theorem derivesLeftmostIn_cons' {n : ℕ}{x : Symbol T g.NT} {v : List (Symbol T g.NT)}{u : List T}
+    (h : g.DerivesLeftmostIn (x :: v) (u.map terminal) n) :
+    (∃ (w₁ w₂: List T) (m₁ m₂ : ℕ),m₁ ≤ n ∧ m₂ ≤ n ∧
+    u = w₁ ++ w₂ ∧ g.DerivesLeftmostIn [x] (w₁.map terminal) m₁ ∧
+    g.DerivesLeftmostIn v (w₂.map terminal) m₂) := by
+  obtain ⟨u', hu, hu'⟩|⟨w₁, u₂, m₁, m₂, hm₁, hm₂, hu, h⟩ := derivesLeftmostIn_cons h
+  · rw [List.map_eq_append_iff] at hu
+    obtain ⟨w₁, w₂, hu, hw₁, hw₂⟩ := hu
+    use w₁, w₂, n, 0
+    refine ⟨by linarith, by linarith, hu, ?_, ?_⟩
+    · simpa [hw₁] using hu'
+    · rw [hw₂]
+      exact DerivesLeftmostIn.refl _
+  · obtain ⟨w₁', w₂, hu', hw₁', hw₂⟩ := List.map_eq_append_iff.mp hu
+    rw [←hw₂] at hu
+    use w₁', w₂, m₁, m₂, hm₁, hm₂, hu'
+    rw [hw₁', hw₂]
+    exact h
 
 /-
 @[elab_as_elim]

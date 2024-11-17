@@ -379,3 +379,46 @@ theorem split_stack {n : ℕ}{q p : Q}{x : List T}{α β : List S}
         · use q₀, γ
         · right
           use q₀, γ
+
+theorem Reaches₁.append_stack {x y : List T}{α β : List S}{q p : Q}(γ : List S)
+    (h : pda.Reaches₁ ⟨q, x, α⟩ ⟨p, y, β⟩):
+    pda.Reaches ⟨q, x, α ++ γ⟩ ⟨p, y, β ++ γ⟩ := by
+  rw [Reaches₁] at *
+  rw [reaches_iff_reachesIn]
+  rcases α  with _ | ⟨Z, α'⟩
+  · use 0
+    obtain ⟨rfl, rfl, rfl⟩ : p = q ∧ y = x ∧ β = [] :=  by simpa [step] using h
+    rfl
+  · rcases x with _ | ⟨a, x'⟩
+    · use 1
+      rw [←reaches₁_iff_reachesIn_one, Reaches₁]
+      simp only [step, Set.mem_setOf_eq, conf.mk.injEq, List.cons_append]  at *
+      obtain ⟨p', β', h⟩ := h
+      use p', β'
+      use h.1, h.2.1, h.2.2.1
+      simp [h]
+    · use 1
+      rw [←reaches₁_iff_reachesIn_one, Reaches₁]
+      simp only [step, Set.mem_setOf_eq, conf.mk.injEq, List.cons_append, Set.mem_union]  at *
+      rcases h with h|h
+      case' h.inl => left
+      case' h.inr => right
+      all_goals obtain ⟨p', β', h⟩ := h <;>
+      use p', β' <;>
+      use h.1, h.2.1, h.2.2.1 <;>
+      simp [h]
+
+theorem Reaches.append_stack {x y : List T}{α β: List S}{q p : Q}
+    (h : pda.Reaches ⟨q, x, α⟩ ⟨p, y, β⟩)(γ : List S):
+    pda.Reaches ⟨q, x, α ++ γ⟩ ⟨p, y, β ++ γ⟩ := by
+  rw [reaches_iff_reachesIn] at h
+  obtain ⟨n, h⟩ := h
+  induction' n with n ih generalizing q x α
+  · obtain ⟨rfl, rfl, rfl⟩:= conf.mk.inj (reachesIn_zero h)
+    rfl
+  · rw [←reachesIn_iff_split_first] at h
+    obtain ⟨⟨q₀, x', α'⟩, h₁, h₂⟩ := h
+    have h₂ := ih h₂
+    rw [←reaches₁_iff_reachesIn_one] at h₁
+    have h₁ := h₁.append_stack γ
+    exact Reaches.trans h₁ h₂

@@ -514,20 +514,66 @@ theorem reachesIn_of_derivesLeftmostIn {γ : List S}{q p : Q}{x : List T}{n : �
     (hγ : γ.length ≤ max_push M)
     (h : (G M).DerivesLeftmostIn [nonterminal (N.list q γ p)] (x.map terminal) n) :
     M.Reaches ⟨q, x, γ⟩ ⟨p, [], []⟩ := by
-  induction' n using Nat.strong_induction_on with n ih
+  induction' n using Nat.strong_induction_on with n ih generalizing x q p γ
   · rcases γ with _ | ⟨Z,γ'⟩
     · apply derivation_empty at h
       simp only [h]
       rfl
     · rcases n with _ | ⟨n⟩
-      · obtain h := h.zero
+      · obtain h := h.zero -- contradictory case
         cases x <;> simp at h
-      · obtain ⟨u, h₁, h₂⟩ := h.head_of_succ
-        obtain ⟨q₁, rfl⟩ := produces_cons h₁
-        rcases n with _ | ⟨n⟩
-        · have := h₂.zero
-          cases x <;> simp at this
-        · obtain ⟨u, h₂₁, h₂₂⟩ := h₂.head_of_succ
-          obtain hu | hu := produces_single h₂₁
-          sorry
-          sorry
+      obtain ⟨u, h₁, h₂⟩ := h.head_of_succ
+      obtain ⟨q₁, rfl⟩ := produces_cons h₁
+      rcases n with _ | ⟨n⟩
+      · have := h₂.zero  -- contradictory case
+        cases x <;> simp at this
+      obtain ⟨u, h₂₁, h₂₂⟩ := h₂.head_of_succ
+      obtain ⟨α, q₀, a, hα, rfl⟩ | ⟨α, q₀, hα, rfl⟩ := produces_single h₂₁
+      · obtain ⟨w, x', m₁, m₂, hm₁, hm₂, rfl, hw, hx'⟩ := derivesLeftmostIn_cons' h₂₂
+        conv at hw => arg 2; change [a].map terminal; rfl
+        obtain hw := hw.terminal
+        rcases w with _ | ⟨a', w'⟩
+        · simp at hw -- contradictory case
+        obtain ⟨rfl, rfl⟩ : (a' = a  ∧ w' = []) := by simpa using hw
+        obtain ⟨w₁, w₂, m₁', m₂', hm₁', hm₂', rfl, hw₁, hw₂⟩ := derivesLeftmostIn_cons' hx'
+        have hα_allowed : α.length ≤ max_push M := by
+          apply push_le_max_push α q Z a'
+          rw [Set.mem_image]
+          use (q₀, α)
+        have hγ'_allowed : γ'.length ≤ max_push M := by
+          rw [List.length_cons] at hγ
+          have := WithBot.coe_le_coe.mpr (by linarith : γ'.length ≤ γ'.length + 1)
+          apply le_trans
+          exact this
+          exact hγ
+        have r₁ : M.Reaches ⟨q, a' :: (w₁ ++ w₂), Z :: γ'⟩ ⟨q₀, w₁ ++ w₂, α ++ γ'⟩ := by
+          apply Relation.ReflTransGen.single
+          simp [Reaches₁, step, hα]
+        have r₂ := ih m₁' (by linarith) hα_allowed hw₁
+        have r₃ := ih m₂' (by linarith) hγ'_allowed hw₂
+        have r₂ := r₂.append_stack γ'
+        rw [unconsumed_input w₂] at r₂
+        apply Reaches.trans r₁
+        apply Reaches.trans r₂
+        exact r₃
+      · obtain ⟨w₁, w₂, m₁, m₂, hm₁, hm₂, rfl, hw₁, hw₂⟩ := derivesLeftmostIn_cons' h₂₂
+        have hα_allowed : α.length ≤ max_push M := by
+          apply push_le_max_push' α q Z
+          rw [Set.mem_image]
+          use (q₀, α)
+        have hγ'_allowed : γ'.length ≤ max_push M := by
+          rw [List.length_cons] at hγ
+          have := WithBot.coe_le_coe.mpr (by linarith : γ'.length ≤ γ'.length + 1)
+          apply le_trans
+          exact this
+          exact hγ
+        have r₁ : M.Reaches ⟨q, w₁ ++ w₂, Z :: γ'⟩ ⟨q₀, w₁ ++ w₂, α ++ γ'⟩ := by
+          apply Relation.ReflTransGen.single
+          rcases w₁ ++ w₂ <;> simp [Reaches₁, step, hα]
+        have r₂ := ih m₁ (by linarith) hα_allowed hw₁
+        have r₃ := ih m₂ (by linarith) hγ'_allowed hw₂
+        have r₂ := r₂.append_stack γ'
+        rw [unconsumed_input w₂] at r₂
+        apply Reaches.trans r₁
+        apply Reaches.trans r₂
+        exact r₃
