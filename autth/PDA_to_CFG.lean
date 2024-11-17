@@ -186,13 +186,13 @@ abbrev split_rule (q₁:Q) :(n : N M) →  Set (ContextFreeRule T (N M))
   | N.list q (Z::α)  p =>
     {⟨N.list q (Z::α) p, [nonterminal (N.single q Z q₁),nonterminal (N.list q₁ α p)]⟩}
 
-abbrev start_rule (q p: Q): Set (ContextFreeRule T (N M)) :=
-  {⟨N.start, [nonterminal (N.list p [M.start_symbol] q)]⟩}
+abbrev start_rule (q: Q): Set (ContextFreeRule T (N M)) :=
+  {⟨N.start, [nonterminal (N.list (M.initial_state) [M.start_symbol] q)]⟩}
 
 abbrev RuleSet : Set (ContextFreeRule T (N M)) :=
   (⋃q:Q,  epsilon_rule q) ∪ (⋃(q:Q)(p:Q)(a:T)(Z:S), compute_rule q p a Z)
   ∪ (⋃(q:Q)(p:Q)(Z:S), compute_rule' q p Z) ∪ (⋃(q:Q)(n ∈ AllowedNonterminals), split_rule q n)
-  ∪ (⋃(q:Q)(p:Q), start_rule q p)
+  ∪ (⋃(q:Q), start_rule q)
 
 theorem ruleSet_finite : (RuleSet : Set (ContextFreeRule T (N M))).Finite := by
   dsimp [RuleSet]
@@ -427,7 +427,7 @@ theorem derivation_empty {n : ℕ}{x : List T}{q p : Q}
         rw [hr] at h₁
         cases h₁
     · simp only [Set.mem_iUnion] at hr
-      obtain ⟨q₀, p₀, hr⟩ := hr
+      obtain ⟨q₀, hr⟩ := hr
       simp only [start_rule, Set.mem_singleton_iff] at hr
       rw [hr] at h₁
       cases h₁
@@ -470,7 +470,7 @@ theorem produces_cons {q p : Q}{Z : S} {γ : List S}
       use q₀
       simp
   · simp only [Set.mem_iUnion] at hr
-    obtain ⟨q₀, p₀, hr⟩ := hr
+    obtain ⟨q₀, hr⟩ := hr
     simp only [start_rule, Set.mem_singleton_iff] at hr
     rw [hr] at h
     cases h
@@ -523,14 +523,14 @@ theorem produces_single {q p : Q}{Z : S}
       rw [hr] at h
       cases h
   · simp only [Set.mem_iUnion] at hr
-    obtain ⟨q₀, p₀, hr⟩ := hr
+    obtain ⟨q₀, hr⟩ := hr
     simp only [start_rule, Set.mem_singleton_iff] at hr
     rw [hr] at h
     cases h
 
 theorem produces_start {u : List (Symbol T (N M))}
     (h : (G M).ProducesLeftmost [nonterminal N.start] u):
-    ∃q p:Q, u = [nonterminal (N.list q [M.start_symbol] p)] := by
+    ∃q : Q, u = [nonterminal (N.list (M.initial_state) [M.start_symbol] q)] := by
   obtain ⟨r, hr, h⟩ := h
   simp only [Set.Finite.mem_toFinset, Set.mem_union, or_assoc] at hr
   rcases hr with hr | hr | hr | hr | hr
@@ -564,11 +564,11 @@ theorem produces_start {u : List (Symbol T (N M))}
       rw [hr] at h
       cases h
   · simp only [Set.mem_iUnion] at hr
-    obtain ⟨q₀, p₀, hr⟩ := hr
+    obtain ⟨q₀, hr⟩ := hr
     simp only [start_rule, Set.mem_singleton_iff] at hr
     rw [hr] at h
     cases h
-    · use p₀, q₀
+    · use q₀
       simp
 
 theorem reachesIn_of_derivesLeftmostIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
@@ -649,3 +649,30 @@ theorem cfg_of_pda (M : PDA Q T S) : (G M).language  = M.acceptsByEmptyStack := 
     · have := h.zero   -- contradictory case
       cases w <;> simp at this
     obtain ⟨u, h₁, h₂⟩ := h.head_of_succ
+    apply produces_start at h₁
+    obtain ⟨p, q, rfl⟩ := h₁
+    have hstart_allowed : [M.start_symbol].length ≤ max_push M := by simp
+    apply reachesIn_of_derivesLeftmostIn hstart_allowed at h₂
+    use p
+  · intro h
+    obtain ⟨p, h⟩ := h
+    have hstart_allowed : [M.start_symbol].length ≤ max_push M := by simp
+    rw [reaches_iff_reachesIn] at h
+    obtain ⟨n, h⟩ := h
+    apply derives_of_reachesIn hstart_allowed at h
+    have : (G M).Derives [nonterminal N.start]
+      [nonterminal (N.list M.initial_state [M.start_symbol] p)] := by
+      apply Produces.single
+      let r : ContextFreeRule T (N M) :=
+        ⟨N.start, [nonterminal (N.list M.initial_state [M.start_symbol] p)]⟩
+      have hr : r ∈ (G M).rules := by
+        rw [Set.Finite.mem_toFinset]
+        simp only [Set.mem_union]
+        right
+        rw [Set.mem_iUnion]
+        use p
+        simp
+      use r, hr
+      apply ContextFreeRule.Rewrites.head
+    rw [language, Set.mem_setOf]
+    exact Derives.trans this h
