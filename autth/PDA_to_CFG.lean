@@ -2,7 +2,7 @@ import autth.PDA
 import autth.leftmost_deriv
 import autth.CountingStepsLeftmost
 import Mathlib.Computability.ContextFreeGrammar
-import Mathlib.Data.Set.Finite
+import Mathlib.Data.Set.Finite.List
 namespace PDA_to_CFG
 
 /-!
