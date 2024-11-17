@@ -293,8 +293,6 @@ theorem produces_compute' {q q₁ p : Q}{α : List S}{Z : S}
   use [], []
   simp
 
---theorem produces_start : (G M).Produces [N.start] [N.list ]
-
 theorem derives_of_reachesIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
     (hγ : γ.length ≤ max_push M) (h : M.ReachesIn n ⟨q,x,γ⟩ ⟨p,[],[]⟩) :
     (G M).Derives [nonterminal (N.list q γ p)] (x.map terminal) := by
