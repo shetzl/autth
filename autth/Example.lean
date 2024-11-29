@@ -25,7 +25,7 @@ private theorem my_first_theorem: [a,a,b] ∈ matches' (comp (star (char a)) (st
     constructor
     · rw [Language.mem_kstar_iff_exists_nonempty]
       use [[b]]
-      simp only [List.join_cons, List.join_nil, List.singleton_append, List.mem_singleton, ne_eq,
+      simp only [List.flatten_cons, List.flatten_nil, List.singleton_append, List.mem_singleton, ne_eq,
         forall_eq, List.cons_ne_self, not_false_eq_true, and_true, true_and]
       rfl
     simp
@@ -47,12 +47,14 @@ private def mysecondrule : (ContextFreeRule Alphabet Unit) where
   input := ()
   output := [a, S, b]
 
+#check Finset (ContextFreeRule Alphabet Unit)
 #check ContextFreeGrammar Alphabet
 
+set_option diagnostics true
 private def mygrammar : ( ContextFreeGrammar Alphabet ) where
   NT := Unit
   initial := ()
-  rules := [myfirstrule, mysecondrule]
+  rules := [myfirstrule, mysecondrule].toFinset -- Stefan: how do I define this context-free grammar here?
 
 #print mygrammar
 #print myfirstrule

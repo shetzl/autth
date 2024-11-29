@@ -56,6 +56,30 @@ abbrev estack_to_fstate (M : PDA Q T S) : PDA (add_init_final Q) T (add_start_sy
   final_states := { newfinal }
   transition_fun := newtransition_fun M
   transition_fun' := newtransition_fun' M
+  finite := by
+    intros q a Z
+    simp[newtransition_fun]
+    match q with
+      | newinit => simp
+      | (oldstate p) => match Z with
+        | newstart => simp
+        | (oldsymbol Y) =>
+          simp
+          sorry -- TODO: need (oldinject5 (M.transition_fun p a Y)).Finite
+      | newfinal => simp
+  finite' := by
+    intros q Z
+    simp[newtransition_fun']
+    match q with
+      | newinit => match Z with
+        | newstart => simp
+        | (oldsymbol Y) => simp
+      | (oldstate p) => match Z with
+        | newstart => simp
+        | (oldsymbol Y) =>
+          simp
+          sorry -- TODO: need: (oldinject5 (M.transition_fun' p Y)).Finite
+      | newfinal => simp
 }
 
 def oldinject6 (M : PDA Q T S) (r : conf M) : (conf (estack_to_fstate M)) where
@@ -63,38 +87,34 @@ def oldinject6 (M : PDA Q T S) (r : conf M) : (conf (estack_to_fstate M)) where
   input := r.input
   stack := oldinject3 r.stack
 
-/-
-theorem reaches_of_reaches' (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.reaches' r₁ r₂) :
-  (M.reaches r₁ r₂) := by
+theorem inject_reaches₁ (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches₁ r₁ r₂) :
+ ((estack_to_fstate M).Reaches₁ (oldinject6 M r₁) (oldinject6 M r₂)) := by
+  unfold oldinject6
+  unfold Reaches₁
   sorry
 
-theorem reaches'_of_reaches (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.reaches r₁ r₂) :
-  (M.reaches' r₁ r₂) := by
-  sorry
- -/
-
-theorem inject_reaches (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.reaches r₁ r₂) :
- ((estack_to_fstate M).reaches (oldinject6 M r₁) (oldinject6 M r₂)) := by
+theorem inject_reaches (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches r₁ r₂) :
+ ((estack_to_fstate M).Reaches (oldinject6 M r₁) (oldinject6 M r₂)) := by
   sorry
 
 theorem map_estackpath_to_fstatepath (M : PDA Q T S) (w: List T) (q : Q)
-  (hr: M.reaches ⟨M.initial_state,w,[M.start_symbol]⟩ ⟨q,[],[]⟩):
-  ∃ γ, (estack_to_fstate M).reaches ⟨newinit,w,[newstart]⟩ ⟨newfinal,[],γ⟩ := by
-  have initstep: (estack_to_fstate M).reaches ⟨newinit,w,[newstart]⟩
+  (hr: M.Reaches ⟨M.initial_state,w,[M.start_symbol]⟩ ⟨q,[],[]⟩):
+  ∃ γ, (estack_to_fstate M).Reaches ⟨newinit,w,[newstart]⟩ ⟨newfinal,[],γ⟩ := by
+  have initstep: (estack_to_fstate M).Reaches ⟨newinit,w,[newstart]⟩
     ⟨(oldstate M.initial_state),w,[oldsymbol M.start_symbol,newstart]⟩ := by
     sorry
-  have injpath: (estack_to_fstate M).reaches
+  have injpath: (estack_to_fstate M).Reaches
     ⟨(oldstate M.initial_state),w,[oldsymbol M.start_symbol,newstart]⟩
     ⟨oldstate q,[],[newstart]⟩ := by
     sorry -- use inject_reaches
-  have finalstep: (estack_to_fstate M).reaches ⟨oldstate q,[],[newstart]⟩ ⟨newfinal,[],[]⟩ := by
+  have finalstep: (estack_to_fstate M).Reaches ⟨oldstate q,[],[newstart]⟩ ⟨newfinal,[],[]⟩ := by
     sorry
   use []
-  apply reaches_trans initstep (reaches_trans injpath finalstep)
+  apply Relation.ReflTransGen.trans initstep (Relation.ReflTransGen.trans injpath finalstep)
 
 theorem map_fstatepath_to_estackpath (M : PDA Q T S) (w: List T) (γ: List (add_start_symbol S)) (q: Q) (qfin : q ∈ M.final_states)
-  (hr: (estack_to_fstate M).reaches ⟨newinit,w,[newstart]⟩ ⟨newfinal,[],γ⟩):
-  ∃ q, M.reaches ⟨M.initial_state,w,[M.start_symbol]⟩ ⟨q,[],[]⟩ := by
+  (hr: (estack_to_fstate M).Reaches ⟨newinit,w,[newstart]⟩ ⟨newfinal,[],γ⟩):
+  ∃ q, M.Reaches ⟨M.initial_state,w,[M.start_symbol]⟩ ⟨q,[],[]⟩ := by
   sorry
 
 -- main theorem
