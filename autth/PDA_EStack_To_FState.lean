@@ -65,7 +65,7 @@ abbrev estack_to_fstate (M : PDA Q T S) : PDA (add_init_final Q) T (add_start_sy
         | newstart => simp
         | (oldsymbol Y) =>
           simp
-          sorry -- TODO: need (essentially): image of inite set is finite
+          sorry -- TODO: need (essentially): image of finite set is finite
       | newfinal => simp
   finite' := by
     intros q Z
@@ -84,39 +84,71 @@ abbrev estack_to_fstate (M : PDA Q T S) : PDA (add_init_final Q) T (add_start_sy
 
 -- TODO: make this a coercion too? if yes, how do we write dependence on M?
 def confinject (M : PDA Q T S) (r : conf M) : (conf (estack_to_fstate M)) where
-  state := oldstate r.state
+  state := r.state
   input := r.input
   stack := r.stack
 
-theorem inject_reaches₁ (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches₁ r₁ r₂) :
+theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
+  (confinject M s) ∈ (step (confinject M r)) := by
+  unfold step at h
+  match r with
+    | ⟨q, a::w, Z::α⟩ =>
+      simp at h
+      sorry
+    | ⟨q, [], Z::α⟩ =>
+      sorry
+    | ⟨q, w, []⟩ =>
+      sorry
+
+theorem inject_reaches₁ (M : PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches₁ r₁ r₂) :
  ((estack_to_fstate M).Reaches₁ (confinject M r₁) (confinject M r₂)) := by
-  unfold confinject
-  unfold Reaches₁
-  sorry
+  unfold Reaches₁ at *
+  apply inject_step
+  exact h
 
 theorem inject_reaches (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches r₁ r₂) :
  ((estack_to_fstate M).Reaches (confinject M r₁) (confinject M r₂)) := by
+  apply Relation.ReflTransGen.lift (confinject M) _ h
+  intro a b h
+  apply inject_reaches₁
+  exact h
+
+-- don't use this, use reaches1_of_transition_fun' instead
+theorem DELETEreaches1_of_transition_fun' (M : PDA Q T S) (p q : Q) (w : List T) (Z_1 Z_2 : S)
+  --(h: (p,β) ∈ M.transition_fun' q Z) : Reaches₁ (⟨q, w, Z::γ⟩ : conf M) ⟨p,w,β++γ⟩ := by
+  (h: (p,[Z_1,Z_2]) ∈ M.transition_fun' q Z_2) : Reaches₁ (⟨q, w, [Z_2]⟩ : conf M) ⟨p,w,[Z_1,Z_2]⟩ := by
   sorry
 
-#check Relation.ReflTransGen
+theorem reaches1_of_transition_fun' (M : PDA Q T S) (p q : Q) (w : List T) (Z : S) (β γ : List S)
+  (h: (p,β) ∈ M.transition_fun' q Z) : Reaches₁ (⟨q, w, Z::γ⟩ : conf M) ⟨p,w,β++γ⟩ := by
+  unfold Reaches₁
+  unfold step
+  simp
+  sorry -- TODO: how do I continue from here?
 
 theorem map_estackpath_to_fstatepath (M : PDA Q T S) (w: List T) (q : Q)
-  (hr: M.Reaches ⟨M.initial_state,w,[M.start_symbol]⟩ ⟨q,[],[]⟩):
+  (hr: M.Reaches ⟨M.initial_state,w,[M.start_symbol]⟩ ⟨q,[],[]⟩) :
   (estack_to_fstate M).Reaches ⟨newinit,w,[newstart]⟩ ⟨newfinal,[],[]⟩ := by
   have initstep: (estack_to_fstate M).Reaches ⟨newinit,w,[newstart]⟩
-    ⟨(oldstate M.initial_state),w,[oldsymbol M.start_symbol,newstart]⟩ := by
+    ⟨(M.initial_state),w,[M.start_symbol,newstart]⟩ := by
+    unfold Reaches
+    apply Relation.ReflTransGen.single
+    --apply reaches1_of_transition_fun'
+    apply DELETEreaches1_of_transition_fun' -- TODO: how do I get rid of this?
+    simp[transition_fun',newtransition_fun']
+  have injpath: (estack_to_fstate M).Reaches
+    ⟨(oldstate M.initial_state),w,[oldsymbol M.start_symbol] ++ [newstart]⟩
+    ⟨oldstate q,[],[] ++ [newstart]⟩ := by
+    apply Reaches.append_stack
+    apply inject_reaches at hr
+    simp [confinject] at hr
+    exact hr
+  have finalstep: (estack_to_fstate M).Reaches ⟨oldstate q,[],[newstart]⟩ ⟨newfinal,[],[]⟩ := by
     unfold Reaches
     apply Relation.ReflTransGen.single
     unfold Reaches₁
     unfold step
-    simp
-    sorry
-  have injpath: (estack_to_fstate M).Reaches
-    ⟨(oldstate M.initial_state),w,[oldsymbol M.start_symbol,newstart]⟩
-    ⟨oldstate q,[],[newstart]⟩ := by
-    sorry -- use inject_reaches
-  have finalstep: (estack_to_fstate M).Reaches ⟨oldstate q,[],[newstart]⟩ ⟨newfinal,[],[]⟩ := by
-    sorry
+    simp[newtransition_fun']
   apply Relation.ReflTransGen.trans initstep (Relation.ReflTransGen.trans injpath finalstep)
 
 theorem map_fstatepath_to_estackpath (M : PDA Q T S) (w: List T) (γ: List (add_start_symbol S))
