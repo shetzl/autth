@@ -27,6 +27,8 @@ instance : Coe S (add_start_symbol S) where
   coe Z := (oldsymbol Z)
 instance : Coe (Q × (List S)) ((add_init_final Q) × (List (add_start_symbol S))) where
   coe p := ( (p.1), (p.2) )
+-- TODO: need Membership (Q × List S) (Set (add_init_final Q × List (add_start_symbol S)))
+--       for inject_transition_fun'
 instance : Coe (Set (Q × (List S))) (Set ((add_init_final Q) × (List (add_start_symbol S)))) where
   coe A := { (x.1,x.2) | x ∈ A }
 
@@ -82,11 +84,19 @@ abbrev estack_to_fstate (M : PDA Q T S) : PDA (add_init_final Q) T (add_start_sy
       | newfinal => simp
 }
 
--- TODO: make this a coercion too? if yes, how do we write dependence on M?
+-- TODO!: make this a coercion too. How do we write dependence on M?
 def confinject (M : PDA Q T S) (r : conf M) : (conf (estack_to_fstate M)) where
   state := r.state
   input := r.input
   stack := r.stack
+
+/- TODO
+theorem inject_transition_fun' (M : PDA Q T S) (p q : Q) (Z : S) (β : List S)
+  ( h: (p,β) ∈ (M.transition_fun' q Z) ) :
+  (p,β) ∈ ((estack_to_fstate M).transition_fun' q Z)
+-/
+
+-- TODO: inject_transition_fun analogously
 
 theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
   (confinject M s) ∈ (step (confinject M r)) := by
@@ -96,6 +106,18 @@ theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
       simp at h
       sorry
     | ⟨q, [], Z::α⟩ =>
+      simp at h
+      rcases h with ⟨p, β, h⟩
+      unfold confinject
+      simp
+      unfold step
+      simp
+      use p
+      use β
+      simp
+      -- TODO: this is too technical: add lemma on injection of transition functions
+      --unfold newtransition_fun'
+      --simp
       sorry
     | ⟨q, w, []⟩ =>
       sorry
@@ -134,7 +156,7 @@ theorem map_estackpath_to_fstatepath (M : PDA Q T S) (w: List T) (q : Q)
     unfold Reaches
     apply Relation.ReflTransGen.single
     --apply reaches1_of_transition_fun'
-    apply DELETEreaches1_of_transition_fun' -- TODO: how do I get rid of this?
+    apply DELETEreaches1_of_transition_fun' -- TODO!: how do I get rid of this?
     simp[transition_fun',newtransition_fun']
   have injpath: (estack_to_fstate M).Reaches
     ⟨(oldstate M.initial_state),w,[oldsymbol M.start_symbol] ++ [newstart]⟩

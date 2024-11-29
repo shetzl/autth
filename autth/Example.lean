@@ -54,7 +54,7 @@ set_option diagnostics true
 private def mygrammar : ( ContextFreeGrammar Alphabet ) where
   NT := Unit
   initial := ()
-  rules := [myfirstrule, mysecondrule].toFinset -- Stefan: how do I define this context-free grammar here?
+  rules := [myfirstrule, mysecondrule].toFinset -- TODO: How do I define this context-free grammar here?
 
 #print mygrammar
 #print myfirstrule
