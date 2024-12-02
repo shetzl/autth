@@ -51,7 +51,7 @@ def step (r₁ : conf pda) : Set (conf pda) :=
                           r₂ = ⟨p, a :: w, (β ++ α)⟩ }
     | ⟨q, [], Z::α⟩ => { r₂ : conf pda | ∃ (p : Q) (β : List S), (p,β) ∈ pda.transition_fun' q Z ∧
                                           r₂ = ⟨p, [], (β ++ α)⟩ }
-    | ⟨q, w, []⟩ => { r₂ : conf pda | r₂ = ⟨q, w, []⟩ } -- Empty stack
+    | ⟨q, w, []⟩ => { r₂ : conf pda | r₂ = ⟨q, w, []⟩ } -- Empty stack -- TODO: change to ∅ ?
 
 def Reaches₁ (r₁ r₂ : conf pda) : Prop := r₂ ∈ step r₁
 def Reaches : conf pda → conf pda → Prop := Relation.ReflTransGen Reaches₁

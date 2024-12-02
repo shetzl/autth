@@ -1,6 +1,8 @@
 import Mathlib.Computability.ContextFreeGrammar
 import Mathlib.Computability.RegularExpressions
 
+open Classical
+
 #check RegularExpression
 
 inductive Alphabet where
@@ -50,11 +52,10 @@ private def mysecondrule : (ContextFreeRule Alphabet Unit) where
 #check Finset (ContextFreeRule Alphabet Unit)
 #check ContextFreeGrammar Alphabet
 
-set_option diagnostics true
-private def mygrammar : ( ContextFreeGrammar Alphabet ) where
+private noncomputable def mygrammar : ( ContextFreeGrammar Alphabet ) where
   NT := Unit
   initial := ()
-  rules := [myfirstrule, mysecondrule].toFinset -- TODO: How do I define this context-free grammar here?
+  rules := { myfirstrule, mysecondrule }
 
 #print mygrammar
 #print myfirstrule

@@ -2,6 +2,16 @@ import autth.PDA
 
 open PDA
 
+-- applies to any PDA -> move to PDA.lean?
+theorem reaches1_of_transition_fun {Q T S: Type} [Fintype Q] [Fintype T] [Fintype S] (M : PDA Q T S)
+  (p q : Q) (w : List T) (Z : S) (β γ : List S) (h: (p,β) ∈ M.transition_fun' q Z) :
+  Reaches₁ (⟨q, w, Z::γ⟩ : conf M) ⟨p,w,β++γ⟩ := by
+  unfold Reaches₁
+  unfold step
+  match w with
+    | a::v => simp; exact h
+    | [] => simp; exact h
+
 -- add new inital and final states
 inductive add_init_final ( π : Type ) where
   | newinit
@@ -27,8 +37,6 @@ instance : Coe S (add_start_symbol S) where
   coe Z := (oldsymbol Z)
 instance : Coe (Q × (List S)) ((add_init_final Q) × (List (add_start_symbol S))) where
   coe p := ( (p.1), (p.2) )
--- TODO: need Membership (Q × List S) (Set (add_init_final Q × List (add_start_symbol S)))
---       for inject_transition_fun'
 instance : Coe (Set (Q × (List S))) (Set ((add_init_final Q) × (List (add_start_symbol S)))) where
   coe A := { (x.1,x.2) | x ∈ A }
 
@@ -84,30 +92,66 @@ abbrev estack_to_fstate (M : PDA Q T S) : PDA (add_init_final Q) T (add_start_sy
       | newfinal => simp
 }
 
--- TODO!: make this a coercion too. How do we write dependence on M?
+-- coercion for configurations
 def confinject (M : PDA Q T S) (r : conf M) : (conf (estack_to_fstate M)) where
   state := r.state
   input := r.input
   stack := r.stack
+instance {M : PDA Q T S} : Coe (conf M) (conf (estack_to_fstate M)) where
+  coe := confinject M
 
-/- TODO
 theorem inject_transition_fun' (M : PDA Q T S) (p q : Q) (Z : S) (β : List S)
   ( h: (p,β) ∈ (M.transition_fun' q Z) ) :
-  (p,β) ∈ ((estack_to_fstate M).transition_fun' q Z)
--/
+  ((p,β): (add_init_final Q × List (add_start_symbol S))) ∈ ((estack_to_fstate M).transition_fun' q Z) := by
+  unfold estack_to_fstate newtransition_fun'
+  simp
+  use p
+  use β
 
--- TODO: inject_transition_fun analogously
+theorem inject_transition_fun (M : PDA Q T S) (p q : Q) (a : T) (Z : S) (β : List S)
+  ( h: (p,β) ∈ (M.transition_fun q a Z) ) :
+  ((p,β): (add_init_final Q × List (add_start_symbol S))) ∈ ((estack_to_fstate M).transition_fun q a Z) := by
+  unfold estack_to_fstate newtransition_fun
+  simp
+  use p
+  use β
 
 theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
-  (confinject M s) ∈ (step (confinject M r)) := by
+  (s : conf (estack_to_fstate M)) ∈ (step (r : conf (estack_to_fstate M))) := by
   unfold step at h
   match r with
     | ⟨q, a::w, Z::α⟩ =>
       simp at h
-      sorry
+      rcases h with h | h
+      · rcases h with ⟨p,β,h₁,h₂⟩
+        unfold confinject
+        simp
+        unfold step
+        simp
+        left
+        use p
+        use β
+        simp
+        rw[h₂]
+        simp
+        apply inject_transition_fun
+        exact h₁
+      · rcases h with ⟨p,β,h₁,h₂⟩
+        unfold confinject
+        simp
+        unfold step
+        simp
+        right
+        use p
+        use β
+        simp
+        rw[h₂]
+        simp
+        apply inject_transition_fun'
+        exact h₁
     | ⟨q, [], Z::α⟩ =>
       simp at h
-      rcases h with ⟨p, β, h⟩
+      rcases h with ⟨p, β, h₁, h₂⟩
       unfold confinject
       simp
       unfold step
@@ -115,48 +159,41 @@ theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
       use p
       use β
       simp
-      -- TODO: this is too technical: add lemma on injection of transition functions
-      --unfold newtransition_fun'
-      --simp
-      sorry
+      rw[h₂]
+      simp
+      apply inject_transition_fun'
+      exact h₁
     | ⟨q, w, []⟩ =>
-      sorry
+      simp at h
+      unfold confinject
+      simp
+      unfold step
+      simp
+      rw[h]
+      simp
 
 theorem inject_reaches₁ (M : PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches₁ r₁ r₂) :
- ((estack_to_fstate M).Reaches₁ (confinject M r₁) (confinject M r₂)) := by
+  ((estack_to_fstate M).Reaches₁ r₁ r₂) := by
   unfold Reaches₁ at *
   apply inject_step
   exact h
 
 theorem inject_reaches (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches r₁ r₂) :
- ((estack_to_fstate M).Reaches (confinject M r₁) (confinject M r₂)) := by
+ ((estack_to_fstate M).Reaches r₁ r₂) := by
   apply Relation.ReflTransGen.lift (confinject M) _ h
   intro a b h
   apply inject_reaches₁
   exact h
-
--- don't use this, use reaches1_of_transition_fun' instead
-theorem DELETEreaches1_of_transition_fun' (M : PDA Q T S) (p q : Q) (w : List T) (Z_1 Z_2 : S)
-  --(h: (p,β) ∈ M.transition_fun' q Z) : Reaches₁ (⟨q, w, Z::γ⟩ : conf M) ⟨p,w,β++γ⟩ := by
-  (h: (p,[Z_1,Z_2]) ∈ M.transition_fun' q Z_2) : Reaches₁ (⟨q, w, [Z_2]⟩ : conf M) ⟨p,w,[Z_1,Z_2]⟩ := by
-  sorry
-
-theorem reaches1_of_transition_fun' (M : PDA Q T S) (p q : Q) (w : List T) (Z : S) (β γ : List S)
-  (h: (p,β) ∈ M.transition_fun' q Z) : Reaches₁ (⟨q, w, Z::γ⟩ : conf M) ⟨p,w,β++γ⟩ := by
-  unfold Reaches₁
-  unfold step
-  simp
-  sorry -- TODO: how do I continue from here?
 
 theorem map_estackpath_to_fstatepath (M : PDA Q T S) (w: List T) (q : Q)
   (hr: M.Reaches ⟨M.initial_state,w,[M.start_symbol]⟩ ⟨q,[],[]⟩) :
   (estack_to_fstate M).Reaches ⟨newinit,w,[newstart]⟩ ⟨newfinal,[],[]⟩ := by
   have initstep: (estack_to_fstate M).Reaches ⟨newinit,w,[newstart]⟩
     ⟨(M.initial_state),w,[M.start_symbol,newstart]⟩ := by
+    clear hr
     unfold Reaches
     apply Relation.ReflTransGen.single
-    --apply reaches1_of_transition_fun'
-    apply DELETEreaches1_of_transition_fun' -- TODO!: how do I get rid of this?
+    apply reaches1_of_transition_fun _ _ _ _ _ [oldsymbol M.start_symbol,newstart]
     simp[transition_fun',newtransition_fun']
   have injpath: (estack_to_fstate M).Reaches
     ⟨(oldstate M.initial_state),w,[oldsymbol M.start_symbol] ++ [newstart]⟩
