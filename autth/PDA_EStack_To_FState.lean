@@ -93,12 +93,8 @@ abbrev estack_to_fstate (M : PDA Q T S) : PDA (add_init_final Q) T (add_start_sy
 }
 
 -- coercion for configurations
-def confinject (M : PDA Q T S) (r : conf M) : (conf (estack_to_fstate M)) where
-  state := r.state
-  input := r.input
-  stack := r.stack
 instance {M : PDA Q T S} : Coe (conf M) (conf (estack_to_fstate M)) where
-  coe := confinject M
+  coe r := ⟨r.state, r.input, r.stack⟩
 
 theorem inject_transition_fun' (M : PDA Q T S) (p q : Q) (Z : S) (β : List S)
   ( h: (p,β) ∈ (M.transition_fun' q Z) ) :
@@ -124,7 +120,6 @@ theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
       simp at h
       rcases h with h | h
       · rcases h with ⟨p,β,h₁,h₂⟩
-        unfold confinject
         simp
         unfold step
         simp
@@ -137,7 +132,6 @@ theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
         apply inject_transition_fun
         exact h₁
       · rcases h with ⟨p,β,h₁,h₂⟩
-        unfold confinject
         simp
         unfold step
         simp
@@ -152,7 +146,6 @@ theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
     | ⟨q, [], Z::α⟩ =>
       simp at h
       rcases h with ⟨p, β, h₁, h₂⟩
-      unfold confinject
       simp
       unfold step
       simp
@@ -165,7 +158,6 @@ theorem inject_step (M : PDA Q T S) (r s : M.conf) (h: s ∈ (step r)) :
       exact h₁
     | ⟨q, w, []⟩ =>
       simp at h
-      unfold confinject
       simp
       unfold step
       simp
@@ -180,7 +172,7 @@ theorem inject_reaches₁ (M : PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches₁ r
 
 theorem inject_reaches (M: PDA Q T S) (r₁ r₂: M.conf) (h: M.Reaches r₁ r₂) :
  ((estack_to_fstate M).Reaches r₁ r₂) := by
-  apply Relation.ReflTransGen.lift (confinject M) _ h
+  apply Relation.ReflTransGen.lift _ _ h
   intro a b h
   apply inject_reaches₁
   exact h
@@ -200,7 +192,6 @@ theorem map_estackpath_to_fstatepath (M : PDA Q T S) (w: List T) (q : Q)
     ⟨oldstate q,[],[] ++ [newstart]⟩ := by
     apply Reaches.append_stack
     apply inject_reaches at hr
-    simp [confinject] at hr
     exact hr
   have finalstep: (estack_to_fstate M).Reaches ⟨oldstate q,[],[newstart]⟩ ⟨newfinal,[],[]⟩ := by
     unfold Reaches
