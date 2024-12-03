@@ -59,6 +59,8 @@ abbrev newtransition_fun (M : PDA Q T S) (q : (add_init_final Q)) (a : T) (Z : (
       | (oldsymbol Y) => (M.transition_fun p a Y)
     | newfinal => ∅
 
+#check Set.Finite.image
+
 -- define translation function of PDAs
 abbrev estack_to_fstate (M : PDA Q T S) : PDA (add_init_final Q) T (add_start_symbol S) := {
   initial_state := newinit
@@ -88,6 +90,8 @@ abbrev estack_to_fstate (M : PDA Q T S) : PDA (add_init_final Q) T (add_start_sy
         | newstart => simp
         | (oldsymbol Y) =>
           simp
+          have hfin: (M.transition_fun' p Y).Finite := by
+            exact M.finite' p Y
           sorry -- TODO: need (essentially): image of finite set is finite
       | newfinal => simp
 }
