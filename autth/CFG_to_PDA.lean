@@ -141,10 +141,7 @@ theorem M_terminal_stack_of_read (a : T) (w : List T) (α β : List (S G)):
     (M G).ReachesIn 1 ⟨Q.loop, a::w, α⟩ ⟨Q.loop, w, β ⟩ → α = terminal a::β  := by
   intro h
   rcases α with _|⟨Z,α'⟩ <;> rw [reachesIn_one] at h <;> dsimp [step] at h
-  · rw [Set.mem_singleton_iff] at h
-    have : w = a::w := by apply conf.mk.inj at h; exact h.2.1
-    apply List.ne_cons_self at this
-    contradiction
+  · contradiction
   · rw [Set.mem_union] at h
     rcases h with h|h
     <;> rw [Set.mem_setOf] at h

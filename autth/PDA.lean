@@ -51,7 +51,7 @@ def step (r₁ : conf pda) : Set (conf pda) :=
                           r₂ = ⟨p, a :: w, (β ++ α)⟩ }
     | ⟨q, [], Z::α⟩ => { r₂ : conf pda | ∃ (p : Q) (β : List S), (p,β) ∈ pda.transition_fun' q Z ∧
                                           r₂ = ⟨p, [], (β ++ α)⟩ }
-    | ⟨q, w, []⟩ => { r₂ : conf pda | r₂ = ⟨q, w, []⟩ } -- Empty stack -- TODO: change to ∅ ?
+    | ⟨q, w, []⟩ => ∅ -- Empty stack -- TODO: change to ∅ ?
 
 def Reaches₁ (r₁ r₂ : conf pda) : Prop := r₂ ∈ step r₁
 def Reaches : conf pda → conf pda → Prop := Relation.ReflTransGen Reaches₁
@@ -174,11 +174,8 @@ theorem decreasing_input_one (h : ReachesIn 1 r₁ r₂) :
     ∃ w : List T, r₁.input = w ++ r₂.input := by
   apply reachesIn_one.mp at h
   rcases r₁ with ⟨q,_|⟨a,w⟩,_|⟨Z,β⟩⟩ <;> simp [PDA,conf,step] at *
-  · rw [h]
   · obtain ⟨_,_,h⟩ := h
     rw [h.2]
-  · rw [h]
-    simp [PDA]
   · rcases h with h|h
     · obtain ⟨p,β,h⟩ := h
       rw [h.2]
@@ -213,9 +210,7 @@ theorem unconsumed_input_one (x : List T) :
     rcases r₂ with ⟨p,v,α⟩
     rcases r₁ with ⟨q,_|⟨a,w⟩,_|⟨Z,β⟩⟩ <;>
     simp [reachesIn_one,step,conf.appendInput] at *
-    · assumption
     · rcases x with _|⟨a,w⟩ <;> simp_all
-    · simp [h]
     · rw [←List.cons_append]
       rw [append_cancel]
       exact h
@@ -223,7 +218,6 @@ theorem unconsumed_input_one (x : List T) :
     rcases r₂ with ⟨p,v,α⟩
     rcases r₁ with ⟨q,_|⟨a,w⟩,_|⟨Z,β⟩⟩ <;>
     simp [reachesIn_one,step,conf.appendInput] at *
-    · assumption
     · rcases x with _|⟨a,w⟩
       · simp at h; assumption
       · simp at h
@@ -233,7 +227,6 @@ theorem unconsumed_input_one (x : List T) :
           rw [List.length_append,List.length_cons] at this
           linarith
         · assumption
-    · rwa [←List.cons_append, append_cancel] at h
     · rwa [←List.cons_append, append_cancel] at h
 
 theorem unconsumed_input_N {n : ℕ} (x : List T) :
@@ -295,12 +288,10 @@ theorem reachesIn_pos_of_not_self {n : ℕ} (h : r₁ ≠ r₂) :
     apply Nat.zero_lt_succ
 
 theorem reachesIn_one_on_empty_stack {q p: Q}{w w': List T}{α : List S}:
-    pda.ReachesIn 1 ⟨q, w, []⟩ ⟨p, w', α⟩ → w=w' ∧ α = [] ∧ q = p:= by
+    ¬pda.ReachesIn 1 ⟨q, w, []⟩ ⟨p, w', α⟩ := by
   intro h
   rw [reachesIn_one] at h
-  simp only [step] at h
-  rw [Set.mem_setOf, conf.mk.injEq] at h
-  simp [h]
+  simp [step] at h
 
 theorem reaches_on_empty_stack {q p: Q}{w w': List T}{α : List S}:
     pda.Reaches ⟨q, w, []⟩ ⟨p, w', α⟩ → w=w' ∧ α = [] ∧ q = p := by
@@ -314,9 +305,7 @@ theorem reaches_on_empty_stack {q p: Q}{w w': List T}{α : List S}:
   · rw [←reachesIn_iff_split_first] at hr
     obtain ⟨⟨q',v,α'⟩,h₁,h₂⟩ := hr
     apply reachesIn_one_on_empty_stack at h₁
-    rw  [←h₁.1, h₁.2.1, ←h₁.2.2] at h₂
-    apply ih at h₂
-    simp [h₂]
+    contradiction
 
 theorem reaches_of_reachesIn  {n: ℕ}(h: pda.ReachesIn n r₁ r₂) : pda.Reaches r₁ r₂ :=
   reaches_iff_reachesIn.mpr ⟨n, h⟩
