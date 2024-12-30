@@ -51,7 +51,7 @@ def step (r₁ : conf pda) : Set (conf pda) :=
                           r₂ = ⟨p, a :: w, (β ++ α)⟩ }
     | ⟨q, [], Z::α⟩ => { r₂ : conf pda | ∃ (p : Q) (β : List S), (p,β) ∈ pda.transition_fun' q Z ∧
                                           r₂ = ⟨p, [], (β ++ α)⟩ }
-    | ⟨q, w, []⟩ => ∅ -- Empty stack -- TODO: change to ∅ ?
+    | ⟨_, _, []⟩ => ∅
 
 def Reaches₁ (r₁ r₂ : conf pda) : Prop := r₂ ∈ step r₁
 def Reaches : conf pda → conf pda → Prop := Relation.ReflTransGen Reaches₁
@@ -59,7 +59,6 @@ def Reaches : conf pda → conf pda → Prop := Relation.ReflTransGen Reaches₁
 inductive ReachesIn : ℕ → conf pda → conf pda → Prop where
   | refl : (r₁ : conf pda)  → ReachesIn 0 r₁ r₁
   | step : {n: ℕ} → {r₁ r₂ r₃ : conf pda} → ReachesIn n r₁ r₂ → Reaches₁ r₂ r₃ → ReachesIn (n+1) r₁ r₃
-
 
 def acceptsByEmptyStack (pda : PDA Q T S) : Language T :=
   { w : List T | ∃ q : Q,
@@ -69,10 +68,6 @@ def acceptsByFinalState (pda : PDA Q T S) : Language T :=
   { w : List T | ∃ q  ∈ pda.final_states, ∃ γ : List S,
       Reaches (⟨pda.initial_state, w, [pda.start_symbol]⟩ : conf pda) ⟨q, [], γ⟩ }
 
--- Martin: This theorem already exists.
-private theorem append_cancel (v x w : List T) : v ++ x = w ++ x ↔ v = w := by
-  apply List.append_left_inj
-
 @[refl]
 theorem Reaches.refl (r₁ : conf pda) : Reaches r₁ r₁ := Relation.ReflTransGen.refl
 
@@ -80,7 +75,6 @@ theorem Reaches.refl (r₁ : conf pda) : Reaches r₁ r₁ := Relation.ReflTrans
 theorem reachesIn.refl (r₁ : conf pda) : ReachesIn 0 r₁ r₁ := ReachesIn.refl r₁
 
 variable {r₁ r₂ : conf pda}
-
 
 theorem reachesIn_zero (h: ReachesIn 0 r₁ r₂) : r₁ = r₂ := by
   rcases h with _|_
@@ -170,16 +164,40 @@ theorem reaches_iff_reachesIn : Reaches r₁ r₂ ↔ ∃ n : ℕ, ReachesIn n r
 theorem Reaches.trans {r₃ : conf pda} (h₁ : Reaches r₁ r₂) (h₂ : Reaches r₂ r₃) :
     Reaches r₁ r₃ := Relation.ReflTransGen.trans h₁ h₂
 
+
+theorem decreasing_input_one' (h : ReachesIn 1 r₁ r₂) :
+    ∃ w : List T, r₁.input = w ++ r₂.input := by
+  apply reachesIn_one.mp at h           -- Apply characterization of ReachesIn 1
+  rcases r₁ with ⟨q, w,  _ | ⟨Z, β⟩⟩      -- To simplify step we have to split cases
+  · simp [step] at h                    -- If the stack is empty no computation can happen
+  · rcases w with  _ | ⟨a, w⟩            -- Again case split if a read is possilbe
+    · dsimp [step] at h
+      obtain ⟨_,_,h⟩ := h                -- If tape is empty no read can happen
+      use []
+      simp [h.2]                        -- Closes the goal
+    · dsimp [step] at h
+      rw [Set.mem_union] at h           -- Convert membership of union to or
+      rcases h with h|h                 -- Split cases on wether a read is happening
+      · rw [Set.mem_setOf] at h         -- Convert membeship of set builder to predicate
+        obtain ⟨p,β,h⟩ := h              -- We know that a is beeing read
+        use [a]
+        simp [h.2]                      -- Closes the goal
+      · obtain ⟨_,_,h⟩ := h              -- No read is happening, so as before
+        use []
+        simp [h.2]
+
 theorem decreasing_input_one (h : ReachesIn 1 r₁ r₂) :
     ∃ w : List T, r₁.input = w ++ r₂.input := by
   apply reachesIn_one.mp at h
-  rcases r₁ with ⟨q,_|⟨a,w⟩,_|⟨Z,β⟩⟩ <;> simp [PDA,conf,step] at *
+  rcases r₁ with ⟨q,_|⟨a,w⟩,_|⟨Z,β⟩⟩
+  · simp [step] at h
   · obtain ⟨_,_,h⟩ := h
-    rw [h.2]
+    use []
+    simp [h.2]
+  · simp [step] at h
   · rcases h with h|h
     · obtain ⟨p,β,h⟩ := h
       rw [h.2]
-      simp
       use [a]
       simp
     · obtain ⟨p,β,h⟩ := h
@@ -212,7 +230,7 @@ theorem unconsumed_input_one (x : List T) :
     simp [reachesIn_one,step,conf.appendInput] at *
     · rcases x with _|⟨a,w⟩ <;> simp_all
     · rw [←List.cons_append]
-      rw [append_cancel]
+      rw [List.append_left_inj]
       exact h
   · intro h
     rcases r₂ with ⟨p,v,α⟩
@@ -227,7 +245,7 @@ theorem unconsumed_input_one (x : List T) :
           rw [List.length_append,List.length_cons] at this
           linarith
         · assumption
-    · rwa [←List.cons_append, append_cancel] at h
+    · rwa [←List.cons_append, List.append_left_inj] at h
 
 theorem unconsumed_input_N {n : ℕ} (x : List T) :
     ReachesIn n r₁ r₂ ↔ ReachesIn n (r₁.appendInput x) (r₂.appendInput x) := by
@@ -330,44 +348,40 @@ theorem reaches₁_push {q : Q}{x : List T}{Z : S}{γ : List S}{c : pda.conf}
       right
       use p, β
 
+
 theorem split_stack {n : ℕ}{q p : Q}{x : List T}{α β : List S}
     (h : pda.ReachesIn n ⟨q, x, α ++ β⟩ ⟨p, [], []⟩):
     ∃(q₁ : Q)(m₁ m₂ : ℕ)(y₁ y₂ : List T), x=y₁++y₂ ∧ m₁ ≤ n ∧ m₂ ≤ n ∧
     pda.ReachesIn m₁ ⟨q, y₁, α⟩ ⟨q₁, [], []⟩ ∧ pda.ReachesIn m₂ ⟨q₁, y₂, β⟩ ⟨p, [], []⟩ := by
-  induction' n with n ih generalizing α x q
-  · obtain ⟨rfl, rfl, hα⟩ := conf.mk.inj (reachesIn_zero h)
+  induction' n with n ih generalizing q x α β
+  · apply reachesIn_zero at h
+    obtain ⟨rfl, rfl, h'⟩ := conf.mk.inj h
+    obtain ⟨rfl, rfl⟩ := List.append_eq_nil.mp h'
     use q, 0, 0, [], []
-    obtain ⟨rfl, rfl⟩ := List.append_eq_nil.mp hα
-    refine ⟨by simp, by simp, by simp, by rfl, by rfl⟩
-  · rcases α with _ | ⟨Z, α⟩
-    · use q, 0, n + 1, [], x
-      refine ⟨by simp, by linarith, by linarith, by rfl, h⟩
-    · obtain ⟨c, h₁, h₂⟩ := reachesIn_iff_split_first.mpr h
-      rw [List.cons_append, ←reaches₁_iff_reachesIn_one] at h₁
-      obtain ⟨a, y, q₀, γ, rfl, rfl, hγ⟩ | ⟨q₀, γ, rfl, hγ⟩ := reaches₁_push h₁
-      · rw [←List.append_assoc] at h₂
-        obtain ⟨q₁, k₁, k₂, y₁, y₂, hy, hk₁, hk₂, ih₁, ih₂⟩ := ih h₂
-        use q₁, k₁+1, k₂, a::y₁, y₂
-        refine ⟨by simp_all, by linarith, by linarith, ?_, ih₂⟩
+    simp [ReachesIn.refl]
+  · rcases α with _ | ⟨Z, α'⟩
+    · use q, 0, n+1, [], x
+      simpa [ReachesIn.refl] using h
+    · rw [List.cons_append] at h
+      rw [←reachesIn_iff_split_first] at h
+      obtain ⟨c, hc₁, hc₂⟩ := h
+      rw [←reaches₁_iff_reachesIn_one] at hc₁
+      obtain ⟨a, y, p, γ, hx, rfl, ht⟩ | ⟨p, γ, rfl, ht⟩ := reaches₁_push hc₁
+      · rw [←List.append_assoc] at hc₂
+        obtain ⟨q₁, m₁, m₂, y₁, y₂, hy, hm₁, hm₂, hr₁, hr₂⟩ := ih hc₂
+        use q₁, m₁ + 1, m₂, a::y₁, y₂
+        refine ⟨by simp [hy, hx], by linarith [hm₁], by linarith [hm₁], ?_, hr₂⟩
         rw [←reachesIn_iff_split_first]
-        use ⟨q₀, y₁, γ ++ α⟩
-        refine ⟨?_, ih₁⟩
-        rw [←reaches₁_iff_reachesIn_one]
-        simp only [Reaches₁, step, Set.mem_union, Set.mem_setOf]
-        left
-        use q₀, γ
-      · rw [←List.append_assoc] at h₂
-        obtain ⟨q₁, k₁, k₂, y₁, y₂, hy, hk₁, hk₂, ih₁, ih₂⟩ := ih h₂
-        use q₁, k₁+1, k₂, y₁, y₂
-        refine ⟨by simp_all, by linarith, by linarith, ?_, ih₂⟩
+        use ⟨p, y₁, γ ++ α'⟩
+        simp [hr₁, reachesIn_one, step, ht]
+      · rw [←List.append_assoc] at hc₂
+        obtain ⟨q₁, m₁, m₂, y₁, y₂, hy, hm₁, hm₂, hr₁, hr₂⟩ := ih hc₂
+        use q₁, m₁ + 1, m₂, y₁, y₂
+        refine ⟨hy, by linarith  [hm₁], by linarith [hm₂], ?_, hr₂⟩
         rw [←reachesIn_iff_split_first]
-        use ⟨q₀, y₁, γ ++ α⟩
-        refine ⟨?_, ih₁⟩
-        rw [←reaches₁_iff_reachesIn_one]
-        rcases y₁ with _ | ⟨a, y₁'⟩ <;> simp only [Reaches₁, step, Set.mem_union, Set.mem_setOf]
-        · use q₀, γ
-        · right
-          use q₀, γ
+        use ⟨p, y₁, γ ++ α'⟩
+        cases y₁ <;>
+        simp [hr₁, reachesIn_one, step, ht]
 
 theorem Reaches₁.append_stack {x y : List T}{α β : List S}{q p : Q}(γ : List S)
     (h : pda.Reaches₁ ⟨q, x, α⟩ ⟨p, y, β⟩):

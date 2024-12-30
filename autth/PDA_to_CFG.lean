@@ -66,12 +66,14 @@ theorem allStackPushes_finite (M : PDA Q T S) : (AllStackPushes M).Finite := by
 abbrev AllStackPushes' (M : PDA Q T S): Finset (List S) :=
   (allStackPushes_finite M).toFinset
 
-abbrev max_push (M : PDA Q T S)  := max ((AllStackPushes' M).image (λ α ↦ α.length)).max 1
+abbrev max_push (M : PDA Q T S)  := max ((AllStackPushes' M).image List.length).max 1
 
 inductive N (M: PDA Q T S)  where
   | start : N M
   | single : Q → S → Q → N M
   | list : Q → List S  → Q → N M
+
+
 
 abbrev N.IsAllowed: N M → Prop
   | N.start => True
@@ -80,7 +82,7 @@ abbrev N.IsAllowed: N M → Prop
 
 abbrev AllowedNonterminals : Set (N M) := {n : N M | n.IsAllowed}
 
-theorem allowedNonterminal_finite : (AllowedNonterminals : Set (N M)).Finite  := by
+theorem allowedNonterminals_finite : (AllowedNonterminals : Set (N M)).Finite  := by
   let S₁ : Set (N M) := ⋃ (q : Q)(Z : S)(p : Q), {N.single q Z p}
   let S₂ : Set (List S) := {α : List S | α.length  ≤ max_push M}
   let S₃ : Set (N M) := ⋃ (q : Q)(p : Q)(α ∈ S₂), {N.list q α p}
@@ -213,7 +215,7 @@ theorem ruleSet_finite : (RuleSet : Set (ContextFreeRule T (N M))).Finite := by
     apply M.finite'
   · apply Set.finite_iUnion
     intro
-    apply Set.Finite.biUnion allowedNonterminal_finite
+    apply Set.Finite.biUnion allowedNonterminals_finite
     intro n hn
     rcases n with _|_|⟨_,_|_,_⟩ <;> dsimp [split_rule] <;> simp
   · repeat (apply Set.finite_iUnion; intro)
@@ -304,10 +306,9 @@ theorem derives_of_reachesIn {γ : List S}{q p : Q}{x : List T}{n : ℕ}
     apply Produces.single
     exact produces_epsilon _
   · rcases γ with _ | ⟨Z, γ⟩
-    · have := reaches_iff_reachesIn.mpr ⟨n+1, h⟩
-      obtain ⟨rfl,_,rfl⟩:= reaches_on_empty_stack  this
-      apply Produces.single
-      exact produces_epsilon _
+    · obtain ⟨_, h, _⟩ := reachesIn_iff_split_first.mpr h
+      apply reachesIn_one_on_empty_stack at h
+      contradiction
     · obtain ⟨⟨q₀, x, γ'⟩, h₁, h₂⟩ := reachesIn_iff_split_first.mpr h
       rw [←reaches₁_iff_reachesIn_one] at h₁
       rcases reaches₁_push h₁ with ⟨a, y, q₁, α, rfl, hc, hα⟩ | ⟨q₁, α, hc, hα⟩

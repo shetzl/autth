@@ -35,7 +35,7 @@ abbrev PDA' (G : ContextFreeGrammar T) [Fintype G.NT] := PDA Q T (S G)
 
 abbrev transition_fun (G : ContextFreeGrammar T) [Fintype G.NT] (_ : Q) (a : T) (Z : S G) : Set (Q × List (S G)) :=
   match Z with
-  | terminal b => if a=b then {(Q.loop, [])} else {}
+  | terminal b => if a=b then {(Q.loop, [])} else ∅
   | _ => ∅
 
 abbrev transition_fun' (G : ContextFreeGrammar T) [Fintype G.NT] (_ : Q) (Z : S G) : Set (Q × List (S G)) :=
@@ -59,23 +59,26 @@ abbrev M (G : ContextFreeGrammar T) [Fintype G.NT] : PDA' G:= {
     rintro q (⟨x⟩|⟨N⟩)
     · exact Set.finite_empty
     · let R  := {r | r ∈ G.rules}
-      have hR : R.Finite := by dsimp [R]; simp
+      have hR : R.Finite := by simp? [R]
       let S  := (λ ⟨N, α⟩ ↦ (Q.loop, α)) ''  R
-      have hS : S.Finite := by dsimp [S]; apply Set.Finite.image; exact hR
+      have hS : S.Finite := by apply Set.Finite.image; exact hR
       let A := (transition_fun' G q (nonterminal N))
       have : A ⊆ S := by
-        intro x hx
-        dsimp [S,R]
+        intro ⟨_, α⟩ h
+        dsimp [A, transition_fun'] at h
+        obtain ⟨α', hr, he⟩ := h
+        obtain ⟨_, hα⟩ := Prod.mk.inj he
+        rw [hα] at hr
         rw [Set.mem_image]
-        dsimp [A,transition_fun'] at hx
-        obtain ⟨α, hα₁,hα₂⟩ := hx
-        use ⟨N,α⟩
-        simp_all
+        use ⟨N, α⟩
+        simp [hr, R]
       exact Set.Finite.subset hS this
 }
 
 section
 variable {G : ContextFreeGrammar T} [Fintype G.NT]
+
+-- M behaves as desired on a terminal
 theorem M_consumes_terminal (a : T) (w : List T) (α : List (S G)):
     (M G).ReachesIn 1 ⟨Q.loop, a::w, terminal a :: α⟩ ⟨Q.loop, w, α⟩ := by
   rw [reachesIn_one,step]
@@ -84,6 +87,7 @@ theorem M_consumes_terminal (a : T) (w : List T) (α : List (S G)):
   use Q.loop, []
   simp [M, CFG_to_PDA.transition_fun]
 
+-- M behaves as desired on a non terminal
 theorem M_consumes_nonterminal {r : ContextFreeRule T G.NT} (h : r ∈ G.rules) (w : List T) (α : List (S G)):
     (M G).ReachesIn 1 ⟨Q.loop, w, nonterminal r.input :: α⟩ ⟨Q.loop, w, r.output ++ α⟩ := by
   rw [reachesIn_one]
@@ -101,6 +105,17 @@ theorem M_consumes_nonterminal {r : ContextFreeRule T G.NT} (h : r ∈ G.rules) 
     · use r.output
     · rfl
 
+-- M behaves as desired on a string of terminals
+theorem M_consumes_terminal_string  (w w': List T) (α : List (S G)):
+    (M G).Reaches ⟨Q.loop, w++w', w.map terminal ++ α⟩ ⟨Q.loop, w', α⟩ := by
+  induction' w with a w ih
+  · rfl
+  · apply Reaches.trans _ ih
+    rw [reaches_iff_reachesIn]
+    use 1
+    apply M_consumes_terminal
+
+-- If M consumes a non terminal we know something about G
 theorem G_rule_of_M_consumes_nonterminal {w w': List T}{α β: List (S G)}{N : G.NT}  :
     (M G).ReachesIn 1 ⟨Q.loop, w, nonterminal N :: α⟩ ⟨Q.loop, w', β⟩ →
     ∃(γ : List (S G)), (⟨N,γ⟩ ∈ G.rules) ∧ β = γ ++ α ∧ w=w':= by
@@ -128,15 +143,7 @@ theorem G_rule_of_M_consumes_nonterminal {w w': List T}{α β: List (S G)}{N : G
       · exact h.2.2
       · simp [h]
 
-theorem M_consumes_terminal_string  (w w': List T) (α : List (S G)):
-    (M G).Reaches ⟨Q.loop, w++w', w.map terminal ++ α⟩ ⟨Q.loop, w', α⟩ := by
-  induction' w with a w ih
-  · rfl
-  · apply Reaches.trans _ ih
-    rw [reaches_iff_reachesIn]
-    use 1
-    apply M_consumes_terminal
-
+-- If M reads a terminal we know there are no non terminals on its stack
 theorem M_terminal_stack_of_read (a : T) (w : List T) (α β : List (S G)):
     (M G).ReachesIn 1 ⟨Q.loop, a::w, α⟩ ⟨Q.loop, w, β ⟩ → α = terminal a::β  := by
   intro h
@@ -160,6 +167,8 @@ theorem M_terminal_stack_of_read (a : T) (w : List T) (α β : List (S G)):
       exfalso
       exact List.cons_ne_self _ _ hr.2.1.symm
 
+-- If there is one terminal on the stack of M and a computation step happens,
+-- we know exactly how it looks
 theorem M_deterministic_step_of_terminal_stack_cons (a : T) (w v : List T) (β β' : List (S G)) :
     (M G).ReachesIn 1 ⟨Q.loop, w, terminal a :: β⟩ ⟨Q.loop, v, β'⟩ → w = a::v ∧ β = β' := by
   intro h
@@ -180,6 +189,8 @@ theorem M_deterministic_step_of_terminal_stack_cons (a : T) (w v : List T) (β �
     · exfalso
       exact (Set.not_mem_empty _) hγ
 
+-- If there is one terminal on the stack of M and it finishes the computation
+-- we know the first part of it
 theorem M_deterministic_of_terminal_stack_cons (a: T) (w : List T) (β : List (S G)):
     (M G).Reaches ⟨Q.loop, w, terminal a :: β⟩ ⟨Q.loop, [], []⟩ →
     ∃ w' : List T, w = a :: w' ∧ (M G).Reaches ⟨Q.loop, w', β⟩ ⟨Q.loop, [], []⟩ := by
@@ -200,6 +211,8 @@ theorem M_deterministic_of_terminal_stack_cons (a: T) (w : List T) (β : List (S
     rw [reaches_iff_reachesIn]
     use n
 
+-- If there is a string of terminals on the stack of M at it finishes the computation
+-- We know the first part of the computation
 theorem M_deterministic_of_terminal_stack (w v: List T) (β  : List (S G)):
     (M G).Reaches ⟨Q.loop, w, v.map terminal ++ β⟩ ⟨Q.loop, [], []⟩ →
     ∃ w' : List T,  w = v ++ w' ∧ (M G).Reaches ⟨Q.loop, w', β⟩ ⟨Q.loop, [], []⟩ := by
@@ -223,20 +236,7 @@ theorem M_reaches_off_G_derives (α : List (Symbol T G.NT)) (w : List T)
     (M G).Reaches ⟨Q.loop, w, α⟩ ⟨Q.loop, [], []⟩ := by
   induction' h using Relation.ReflTransGen.head_induction_on with α β hα _ ih
   case refl =>
-    induction' w with a w' ih
-    case nil =>
-      rfl
-    case cons =>
-      rw [List.map_cons]
-      rw [reaches_iff_reachesIn] at ih
-      obtain ⟨n, hw'⟩ := ih
-      rw [reaches_iff_reachesIn]
-      use n+1
-      rw [←reachesIn_iff_split_first]
-      use ⟨Q.loop, w', w'.map terminal⟩
-      refine ⟨?_,?_⟩
-      · apply M_consumes_terminal
-      · exact hw'
+    convert M_consumes_terminal_string w [] [] <;> simp
   case head =>
     obtain ⟨r,hrg,hrα⟩ := hα
     rw [rewrites_leftmost_iff] at hrα
@@ -264,15 +264,14 @@ theorem G_derives_of_M_reaches {α : List (Symbol T G.NT)} {w : List T}
   induction' n  with n ih generalizing w α
   · apply reachesIn_zero at hr
     apply conf.mk.inj at hr
-    rw [hr.2.1, hr.2.2, List.map_nil]
+    simp [hr, Derives.refl]
   · rw [←reachesIn_iff_split_first] at hr
     obtain ⟨⟨_,w',β⟩, h₁, h₂⟩ :=  hr
     apply ih at h₂
     rcases α with _|⟨⟨a⟩|⟨N⟩,α'⟩
-    · apply reaches_of_reachesIn at h₁
-      apply reaches_on_empty_stack at h₁
-      rw [←h₁.1,h₁.2.1] at h₂
-      exact h₂
+    · -- trivial case
+      apply reachesIn_one_on_empty_stack at h₁
+      contradiction
     · apply M_deterministic_step_of_terminal_stack_cons at h₁
       rw [h₁.1,h₁.2]
       convert ContextFreeGrammar.Derives.append_left h₂ [terminal a]
